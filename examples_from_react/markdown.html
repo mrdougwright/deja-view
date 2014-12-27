@@ -1,0 +1,30 @@
+<!doctype html>
+
+<html>
+
+<head>
+<title>seconds elapsed</title>
+</head>
+
+<body view='markdownView'>
+
+<h2>Input</h2>
+
+<textarea on-keyup='set(text)'>
+Type some **markdown** here!
+</textarea>
+
+<h2>Output</h2>
+
+<p>#markdown(text)</p>
+
+</body>
+
+<script>
+var marked = require('marked')
+
+view('markdownView')
+	.set('markdown', function(text) { return marked(text) })
+
+</script>
+</html>

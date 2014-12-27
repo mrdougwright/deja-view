@@ -1,0 +1,143 @@
+<div class='donation-row'>
+	<!-- (repeat donations) --
+	<!-- (attr 'data-id' id) -->
+
+	<div class='main'>
+			<!-- (attr 'data-id' id) -->
+			<p class='amount'>
+			<span class='dollar'>$</span>
+			<!-- (dollars) -->
+		</p>
+
+		<div class='name-loc'>
+			<p class='anon'>
+				<!-- (show-if anonymous) -->
+				Anonymous
+			</p>
+
+			<a class='name search-by'>
+				<!-- (supporter.name) -->
+			</a>
+			<a class='city-state search-by'>
+				<!-- (show-if supporter.city_and_state) -->
+				<i class='fa fa-map-marker'></i>
+				<!-- (supporter.city_and_state) -->
+			</a>
+		</div>
+
+		<div class='towards'>
+
+			<p>
+				<!-- (show-if event_name) -->
+				<i class='fa fa-ticket'></i>
+				Ticket for
+				<a target='_blank'>
+					<!-- (attr 'href' event_url) -->
+					<!-- (event_name) -->
+				</a>
+			</p>
+
+			<p>
+				<!-- (show-if campaign_name) -->
+				<i class='fa fa-users'></i>
+				Campaign:
+				<a target='_blank'>
+					<!-- (attr 'href' campaign_url) -->
+					<!-- (campaign_name) -->
+				</a>
+			</p>
+
+			<p>
+				<!-- (show-if just_donation) -->
+				<i class='fa fa-heart'></i> Donation
+			</p>
+
+			<p>
+				<!-- (show-if designation) -->
+				<i class='fa fa-archive'></i>
+				Designation: <!-- (designation) -->
+			</p>
+
+			<p>
+				<!-- (show-if manual) -->
+				<i class='fa fa-money'></i> Offline Donation
+			</p>
+		</div>
+	</div>
+
+	<div class='details'>
+		<div class='top'>
+			<p class='date'>
+				<i class='fa fa-calendar-empty'></i>
+				<!-- (date) -->
+			</p>
+			<p class='type'>
+				<!-- (show-if old_recurring) -->
+				<i class='fa fa-refresh'></i> Recurring</span>
+			</p>
+			<p class='type'>
+				<!-- (show-if new_recurring) -->
+				<i class='fa fa-refresh'></i> <strong>New</strong> Recurring</span>
+			</p>
+			<p class='type'>
+				<!-- (show-if one_time) -->
+				<i class='icon-one-time'></i> One-time</span>
+			</p>
+
+			<a class='details-button'><i class='uni'>▼</i> Details</a>
+
+			<p class='disbursal'>
+				<!-- (show-if disbursed) -->
+				<i class='uni'>✔</i> Disbursed
+			</p>
+			<a class='refund-button'><i class='fa fa-mail-reply'></i> Refund</a>
+		</div>
+
+		<div class='body'>
+			<div class='col-left'>
+				<dl>
+					<dt>ID</dt> <dd> <!-- (id) --> </dd>
+					<dt>Dedication</dt> <dd> <!-- (dedication) --> </dd>
+					<dt>Origin</dt>
+					<dd>
+						<a target='_blank'>
+							<!-- (attr 'href' origin_url) -->
+							<!-- (short_origin) -->
+						</a>
+					</dd>
+					<dt>Email</dt>
+					<dd>
+						<a>
+							<!-- (attr 'href' supporter.mailto) -->
+							<!-- (supporter.email) -->
+						</a>
+					</dd>
+				</dl>
+			</div>
+
+			<div class='col-right'>
+				<!-- (hide-if supporter.anonymous) -->
+				<dl>
+					<dt>Phone</dt>
+					<dd> <!-- (supporter.readable_phone) --> </dd>
+					<dt>Address</dt>
+					<dd>
+						<!-- (supporter.address) --> <br>
+						<!-- (supporter.city_and_state) --> <!-- (supporter.zip_code) -->
+					</dd>
+					<dt class='profile'>
+						<!-- (if supporter.anonymous (class 'anon')) -->
+						Profile
+					</dt>
+					<dd>
+						<a class='profile-link'>
+							<!-- (if has_profile (class 'has_profile')) -->
+							<!-- (attr 'href' profile.url) -->
+							<!-- (profile.name) -->
+						</a>
+					</dd>
+				</dl>
+			</div>
+		</div>
+	</div>
+</div>

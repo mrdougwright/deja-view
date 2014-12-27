@@ -1,0 +1,29 @@
+{
+	"name": "deja-view",
+	"version": "0.1.0",
+	"description": "really simple & small but powerful reactive views",
+	"keywords": [ "template", "view", "reactive", "bindings", "browserify", "component" ],
+	"bugs": "https://github.com/jayrbolton/deja-view/issues",
+	"url": "https://github.com/jayrbolton/deja-view/",
+	"license": "MIT",
+	"author": {
+		"name": "Jay R Bolton",
+		"email": "jayrbolton@gmail.com",
+		"url": "https://github.com/jayrbolton"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jayrboltong/deja-view.git"
+	},
+	"dependencies": {
+		"component-emitter": "1.1.3"
+	},
+	"devDependencies": {
+		"zuul": "1.14.0",
+		"mocha": "2.0.1",
+		"domify": "1.3.1"
+	},
+	"scripts": {
+		"test": "zuul --local -- test/index.js"
+	}
+}

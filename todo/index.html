@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+
+<head> <title>Deja View • TodoMVC</title> </head>
+
+<body>
+
+	<header> <h1>todos</h1> </header>
+	
+	<div class='todo'>
+
+		<a class='allDoneButton' on-click='finish-all'>
+			<!-- (on-submit prevent-default) -->
+			<!-- (on-click finish-all) -->
+			<i class='icon-chevron-down'></i>
+		</a>
+		
+		<form>
+			<meta on-submit='push form-data active'>
+			<input type='text' placeholder='What needs to be done?' name='content'>
+			<input type='hidden' name='done' value=0>
+		</form>
+
+		<ul class='todo-listing'>
+
+			<li repeat='shown'>
+				<input type='checkbox' on-change='check this'>
+
+				<a on-click='trigger editable'>
+					<label on-dblclick="set-attr 'contenteditable'" on-change='set this.content textContent' put='this.content'> </label>
+				</a>
+
+					<a on-click='remove this all, update-from-all'>
+						Remove
+					</a>
+
+			</li>
+		</ul>
+
+		<footer class='metrics'>
+			<span class='metrics-left'> <!-- (active.length) --> items left </span>
+
+			<ul class='metrics-filter metrics-#page'>
+				<li class='active' on-click='set shown active'> All </li>
+				<li><!-- (on-click set shown active) --> Active </li>
+				<li on-click='set shown completed'> Completed </li>
+			</ul>
+
+			<span class='metrics-right' if='length completed'>
+				Clear completed
+				<!-- (str '(' (length completed) ' total)') -->
+			</span>
+
+		</footer>
+
+	</div>
+
+	<footer id="info">
+		<p>Double-click to edit a todo</p>
+		<p>Created by <a href="http://www.deja-view.org">Deja View!</a></p>
+		<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+	</footer>
+
+<script>
+var view = require('deja-view')
+
+view.all = []
+
+view.active = function() {
+	return getActive(view('all'))
+}
+
+view.completed = function() {
+	return getCompleted(view('all'))
+}
+
+view.finishAll = function() {
+	view('all', view('all').map(function(item) { item.done = true; return item}))
+}
+
+view.check = function(item) { item.done = true }
+
+function getActive(todos) {
+ return todos.filter(function(item) { return !item.done })
+}
+
+function getCompleted(todos) {
+	return todos.filter(function(item) { return !item.done })
+}
+
+/*
+steps:
+1. print an array of objects
+2. add a new object to that array
+3. remove an object from an array
+4. filter 
+
+*/
+
+</script>
+
+</body>
+</html>

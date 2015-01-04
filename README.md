@@ -1,12 +1,12 @@
 deja-view
 =========
 
-really simple &amp; small but powerful UX library
+really simple, fun, &amp; small but powerful UX library
 
 * display data in your dom declaratively with no querying and have it update automatically
 * describe behavior in your dom using **view expressions**, which you can extend yourself endlessly
 * compose and extend views very easily
-* automatically caches the state of your view to local storage
+* automatically cache the state of your view to local storage
 * only 500 lines (10kb)
 * IE6+ compatible
 
@@ -14,19 +14,25 @@ really simple &amp; small but powerful UX library
 
 You can install it with npm or bower, then use it with browserify:
 
+```sh
+npm install deja-view
+```
+
 ```js
 var view = require('deja-view')
 ```
 
 ## displaying and updating data on the page
 
-deja uses HTML comments for **view expressions**. Wrap your expressions in parentheses. To simply display a string on your page, it looks like:
+deja uses HTML comments for **view expressions**. Wrap your expressions in parentheses within a comment. To simply display a string on your page, it looks like:
 
 ```html
 <p>
 	Hallo, <!-- (name) -->
 </p>
 ```
+
+Then in your js:
 
 ```js
 view('name', 'Bob Ross')
@@ -133,6 +139,7 @@ You can always access the node that your view function is currently inside of by
 * **trigger** eventName - trigger an event
 * **when** eventName expr - run a view expression when an event is triggered
 * **set** key val - set the key to the given value in the view's data
+* **default** key val - if the key is not set already, then set it to val
 * **push** val arrayName - push a value into an array in the view, given by the array's key name
 * **pop** arrayName - push a value into an array in the view, given by the array's name
 * **remove** val arrayName - find and remove the value from the array inside the view, given by the array's name
@@ -173,7 +180,7 @@ To open modals in your application, you can use a the `trigger` view function:
 
 ```html
 <a>
-	<!-- on-click (trigger 'hello-modal') -->
+	<!-- (on-click (trigger 'hello-modal')) -->
 	Get a greeting
 </a>
 
@@ -181,7 +188,7 @@ To open modals in your application, you can use a the `trigger` view function:
 	<!-- (when 'hello-modal' (toggle-class 'is-shown')) -->
 
 	<a>
-		<!-- on-click (trigger 'hello-modal') -->
+		<!-- (on-click (trigger 'hello-modal')) -->
 		Close modal
 	</a>
 
@@ -228,7 +235,7 @@ view('validate-match', function(name) {
 
 ## patterns & tips
 
-* Think of your view -- that is, your HTML and your view expressions -- as just the description of the layout and behavior of your data.
+* Think of your view -- that is, your HTML and your view expressions -- as only the description of the layout and behavior of your data.
 * Any complicated logic -- like ajax, list reduction, or detailed data processing -- should still live in the JS, not the view.
 
 ## Why S-Expressions?

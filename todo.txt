@@ -1,8 +1,8 @@
 x make 110% sure you know what you want
 x write an s-expression lexer
 x write an s-expression parser
-- write an s-expression evaluator
-- find all s-expression comments in the document
+x write an s-expression evaluator
+x find all s-expression comments in the document
 - eval them and bind their keys
 - re-eval the bound s-exp when the key is set
 - done

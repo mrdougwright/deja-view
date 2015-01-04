@@ -171,6 +171,7 @@ That's it! In only a dozen lines we have a fully functioning to-do list that wil
 
 To open modals in your application, you can use a the `trigger` view function:
 
+```html
 <a>
 	<!-- on-click (trigger 'hello-modal') -->
 	Get a greeting
@@ -187,13 +188,14 @@ To open modals in your application, you can use a the `trigger` view function:
 	<p>Hello to you!</p>
 
 </div>
+```
 
 with a few expressions, we can toggle a class on a modal `div` using events.
 
 
 ### form validation
 
-Here's how you could write a form validation plugin with very little code
+Here's a sample of how you could write a form validation plugin with very little code
 
 ```html 
 <form>
@@ -206,6 +208,7 @@ Here's how you could write a form validation plugin with very little code
 	</div>
 
 	<div class='field'>
+		<!-- (validate-match 'password') -->
 		<input type='password' required placeholder='confirm password' name='password_confirmation'>
 	</div>
 
@@ -217,26 +220,24 @@ view('validate-match', function(name) {
 	var input = this.node.querySelector('input')
 	var form = this.node.parentNode
 	var inputMatch = form.querySelector("input[name='" + name + "']")
-	if(input.value !== inputMatch.value) alert("invalid!!!!")
+	if(input.value !== inputMatch.value) alert("invalid omg!!!!")
 })
 ```
 
 ## utilities
 
-#### simple string interpolation
-
 ## patterns & tips
 
-* Think of your view -- that is, your HTML and your view expressions -- as a description of the layout and behavior of your data.
-* Any complicated logic should live in the JS, not the view.
+* Think of your view -- that is, your HTML and your view expressions -- as just the description of the layout and behavior of your data.
+* Any complicated logic -- like ajax, list reduction, or detailed data processing -- should still live in the JS, not the view.
 
 ## Why S-Expressions?
 
 Reasons for using S-Expressions:
 
 * It makes it clear that the view expressions are **not** javascript
-* It's fast and simple to parse
-* It is very scannable and more quickly differentiated from regular comments
+* It's very fast and simple to parse
+* It is visually scannable as distinct from html, but still reads similarly. It's also more quickly differentiated from regular comments
 
 ## view expression grammar
 

@@ -15,7 +15,7 @@ var view = module.exports = {
 
 view.create = function() { return copy.deep(this) }
 view.merge = function(otherView) { return copy.deep(otherView, this) }
-view.clear = function() { 
+view.clear = function() {
 	this.bindings = {}
 	return this
 }

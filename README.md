@@ -156,7 +156,6 @@ You can always access the node that your view function is currently inside of by
 Let's build a very simple to-do list where we can add new items with an input field and remove finished items. We can implement the entire thing with only a few simple view expressions!
 
 ```html
-<!-- (default todos []) -->
 
 <form>
 	<!-- (on-submit (push form-data todos)) -->

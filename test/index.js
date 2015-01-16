@@ -1,39 +1,49 @@
-var assert = require('assert')
-var domify = require('domify')
+var assert = require('assert'),
+    domify = require('domify')
 
-var view = require('../')
-var lex = require('../lib/lex')
-var parse = require('../lib/parse')
-var isExpr = require('../lib/isExpr')
+var view = require('../'),
+    parse = require('../lib/parse'),
+    isExpr = require('../lib/isExpr'),
+    iter = require('../lib/iter')
+
+/*
 var evaluate = require('../lib/evaluate')
-var iter = require('../lib/iter')
+*/
 
-var sexpr = '(a ((b (c z)) (d "hello!") 433.43))'
-var tokens = ['(', {key: 'a'}, '(', '(', {key: 'b'}, '(', {key: 'c'}, {key: 'z'}, ')', ')', '(', {key: 'd'}, {str: '"hello!"'}, ')', {num: '433.43'}, ')', ')']
-var parsed = [[{key: 'a'}, [[{key: 'b'}, [{key: 'c'}, {key: 'z'}]], [{key: 'd'}, {str: '"hello!"'}], {num: '433.43'}]]]
+describe('parse', function() {
 
-describe('.lex', function() {
-
-	it('turns an s-expr into an array of tokens', function() {
-		assert.deepEqual(lex(sexpr), tokens)
+	it('denests parens', function() {
+		assert.deepEqual(parse('(1)'), ['1'])
 	})
 
+	it('denests arbitrary opening parens', function() {
+		assert.deepEqual(parse('(1'), ['1'])
+	})
+
+	it('turns a num into a demarcated number', function() {
+		assert.deepEqual(parse('1'), [{num: 1}])
+	})
+
+	it('turns a str into a demarcated string', function() {
+		assert.deepEqual(parse('"what\'s up there bro?"'), [{str: "what's up there bro?"}])
+	})
+
+	it('turns a keyword into a demarcated key', function() {
+		assert.deepEqual(parse('xyz'), [{key: "xyz"}])
+	})
+
+	it('turns an expression into an array of atoms and sub-expressions', function() {
+		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "hey there bro"',
+		    parsed = [{key: 'a'}, 'b (c z)', 'd "hello!"', {num: 433.43}, {str: 'hey there bro'}]
+		assert.deepEqual(parse(sexpr), parsed)
+	})
 })
 
-describe('.parse', function() {
-	it('turns an array of tokens into a parsed nested array of atoms', function() {
-		assert.deepEqual(parse(tokens), parsed)
-	})
+describe('isExpr', function() {
 
-	it('parses with implicit closing parens at the end of the expression', function() {
-		assert.deepEqual(parse(lex('(a (b (c)))')), [[{key: 'a'}, [{key: 'b'}, [{key: 'c'}]]]])
-	})
-})
-
-describe('.isExpr', function() {
-
-	it('returns truthy with any string of chars surrounded by parens', function() {
+	it('returns truthy with any string of chars beginning with parens', function() {
 		assert(isExpr('(hey there! (hey lol))'))
+		assert(isExpr('(hey there! (hey lol'))
 	})
 
 	it('returns null without parens surrounding', function() {
@@ -43,43 +53,59 @@ describe('.isExpr', function() {
 
 describe('view', function() {
 
-	it('returns a single val', function() {
-		assert.equal(view.get('(1)'), '1')
+	it('returns a single num', function() {
+		assert.equal(view('1'), 1)
 	})
 
-	it('returns val from the view data using a key', function() {
-		view.set('x', 2)
-		assert.equal(view.get('x'), '2')
+	it('returns a single num wrapped in arbitrary parens', function() {
+		assert.equal(view('(1)'), 1)
+		assert.equal(view('(((1)'), 1)
 	})
 
-	it('evaluates singleton functions', function() {
-		view.set('fn', function() {return 3})
-		assert.equal(view.get('(fn)'), '3')
+	it('returns a single str', function() {
+		assert.equal(view('("hey there!")'), "hey there!")
 	})
 
-	it('evaluates functions with one arg', function() {
-		view.set('incr', function(x) { return x + 1})
-		assert.equal(view.get('(incr 9)'), '10')
+	it('returns the value for a single key set into the view data', function() {
+		view.def('x', 420)
+		assert.equal(view('(x'), 420)
 	})
 
-	it('evaluates mult-arg function calls', function() {
-		view.set('sum', function() { return iter.fold(arguments, 0, function(s,n){return s+n})})
-		assert.equal(view.get('(sum 1 2 3 4 5)'), '15')
+	it('returns the return val of a singleton function', function() {
+		view.def('hi', function() { return 'heyo!' })
+		assert.equal(view('hi'), 'heyo!')
 	})
 
-	it('evaluates nested multi-arg function calls', function() {
-		view.set('incr', function(x) { return x + 1})
-		view.set('add', function(x,y) { return x+y})
-		assert.equal(view.get('(incr (add 1 (add 2 3)))'), '7')
+	it('returns the return val of a function taking atoms as params', function() {
+		assert.equal(view('(((add 1 2'), 3)
 	})
 
-	it('evaluates functions returned by other functions', function() {
-		view.set('addadd', function(x,y) {return function(z) {return x+y+z}})
-		assert.equal(view.get('((addadd 1 2) 3)'), '6')
+	it('returns the return val of various nested functions', function() {
+		assert.equal(view('(((add (incr 1) (decr 2'), 3)
+	})
+
+	it('more nested lol', function() {
+		assert.equal(view('(((add (add 1 1) (add (add 3 4) (add 2 2)'), 13)
+	})
+
+	it('evaluates functions returned by another function', function() {
+		view.def('addadd', function(x,y) { return function(z) { return view(x) + view(y) + view(z) }})
+		assert.equal(view('((addadd 1 2) 3)'), 6)
 	})
 
 	it('evaluates keys that dont exist as empty string', function() {
-		assert.equal(view.get('(wat)'), '')
+		assert.equal(view('(watskfasdasdfasd)'), '')
+	})
+
+	it('allows for the definition of partial application of functions', function() {
+		view.def('partial', 'hi', function(name) { return 'hi ' + view(name) })
+		// TODO
+		// assert.equal(view('partial 420'), 'hi 420')
+	})
+
+	it('allows for the definition of nested dotted keys', function() {
+		view.def('x.y.z', 22)
+		assert.equal(view.data.x.y.z, 22)
 	})
 
 })
@@ -88,137 +114,87 @@ describe('.render', function() {
 
 	it('interpolates a num', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (12.32) ")
-		div.appendChild(hallo)
+		div.appendChild(document.createComment(" (12.32) "))
 		view.render(div)
 		assert.equal(div.textContent, '12.32')
 	})
 
 	it('interpolates a str', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" ('hello! world!') ")
-		div.appendChild(hallo)
+		div.appendChild(document.createComment(" ('hello! world!') "))
 		view.render(div)
 		assert.equal(div.textContent, 'hello! world!')
 	})
 
 	it('interpolates a fn', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (add 1 2) ")
-		div.appendChild(hallo)
-		view.set('add', function(x,y) { return x + y})
+		div.appendChild(document.createComment(" (add 1 2) "))
 		view.render(div)
 		assert.equal(div.textContent, '3')
 	})
 
 	it('interpolates a nested fn', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (str 'answer is' (add 1 2)) ")
-		div.appendChild(hallo)
-		view.set('str', function() { return iter.fold(arguments, '', function(result, s) {return result + ' ' + s}).trim()})
-		view.set('add', function(x,y) { return x+y})
+		div.appendChild(document.createComment(" (str 'answer is' (add 1 2)) "))
+		view.def('str', function() { return iter.fold(arguments, '', function(result, s) {return result + ' ' + view(s)}).trim()})
 		view.render(div)
 		assert.equal(div.textContent, 'answer is 3')
 	})
 
-	it('interpolates a key', function() {
+	it('interpolates key values', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (add x y) ")
-		div.appendChild(hallo)
-		view.set('add', function(x,y) { return x + y})
-		view.set('x', 2)
-		view.set('y', 3)
+		div.appendChild(document.createComment(" (add x y) "))
+		view.def({x: 2, y: 3})
 		view.render(div)
 		assert.equal(div.textContent, '5')
 	})
 
 	it('runs a function that can mess with the parent node', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (make-blue) ")
-		div.appendChild(hallo)
-		view.set('make-blue', function() { this.node.style.color = 'blue' })
+		div.appendChild(document.createComment(" (make-blue) "))
+		view.def('make-blue', function() { this.node.style.color = 'blue' })
 		view.render(div)
 		assert.equal(div.style.color, 'blue')
 	})
 
 	it('retrieves nested keys from view data', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (x.y.z) ")
-		div.appendChild(hallo)
-		view.set({x: {y: {z: 1}}})
+		div.appendChild(document.createComment(" (x.y.z) "))
+		view.def({x: {y: {z: 1}}})
 		view.render(div)
 		assert.equal(div.textContent, '1')
 	})
 
 	it('retrieves unnested but dotted keys from view data', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (x.y.z) ")
-		div.appendChild(hallo)
-		view.set("x.y.z", 420)
+		div.appendChild(document.createComment(" (x.y.z) "))
+		view.def("x.y.z", 420)
 		view.render(div)
 		assert.equal(div.textContent, '420')
 	})
-
 })
 
-describe('data binding', function() {
+
+describe('data binding/updating', function() {
 
 	it('updates an interpolation when data is changed', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (x) ")
-		div.appendChild(hallo)
-		view.set('x', 1)
+		div.appendChild(document.createComment(" (x) "))
+		view.def('x', 1)
 		view.render(div)
 		assert.equal(div.textContent, '1')
-		view.set('x', 2)
+		view.def('x', 2)
 		assert.equal(div.textContent, '2')
 	})
 
 	it('updates the interpolation of a function return val when data in the function params was changed', function() {
 		var div = document.createElement("div")
-		var hallo = document.createComment(" (add (add (add x x) 1) 1)")
-		div.appendChild(hallo)
-		view.set('add', function(x,y) { return x + y})
-		view.set('x', 1)
+		div.appendChild(document.createComment(" (add (add (add x x) 1) 1)"))
+		view.def('x', 1)
 		view.render(div)
 		assert.equal(div.textContent, '4')
-		view.set('x', 2)
+		view.def('x', 2)
 		assert.equal(div.textContent, '6')
 	})
-
 })
 
-describe('show-if', function() {
-
-	it('hides an element if pred is false', function() {
-		var div = document.createElement("div")
-		var hallo = document.createComment(" (show-if this-doesnt-exist) ")
-		div.appendChild(hallo)
-		view.render(div)
-		assert.equal(div.style.display, 'none')
-	})
-
-	it('shows an element if pred is true', function() {
-		var div = document.createElement("div")
-		var hallo = document.createComment(" (show-if 'hey there!') ")
-		div.appendChild(hallo)
-		view.render(div)
-		assert.equal(div.style.display, '')
-	})
-})
-
-describe('repeat', function() {
-
-	it('prints an array of stuff ???', function() {
-		var div1 = document.createElement("div")
-		var div2 = document.createElement("div")
-		div1.appendChild(div2)
-		var hallo = document.createComment(" (repeat xs) ")
-		var each = document.createComment(" (this) ")
-		view.set('xs', [1,2,3,4])
-		div2.appendChild(hallo)
-		div2.appendChild(each)
-		view.render(div1)
-		assert.equal(div1.textContent, '1234')
-	})
-})

@@ -158,7 +158,8 @@ Let's build a very simple to-do list where we can add new items with an input fi
 ```html
 
 <form>
-	<!-- (on-submit (push form-data todos)) -->
+
+<!-- (on-submit (push form-data todos)) -->
 	<input type='text' placeholder='What do you need to do?'>
 </form>
 
@@ -170,6 +171,7 @@ Let's build a very simple to-do list where we can add new items with an input fi
 	</li>
 </ul>
 ```
+
 
 That's it! In only a dozen lines we have a fully functioning to-do list that will even store everything to localStorage.
 

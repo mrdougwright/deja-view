@@ -1,1 +1,1 @@
-console.error("Error: Cannot find module 'deja-view' from '/home/big/j/code/commitchange/app/assets/javascripts/common/deja-view/todo/js'")
+console.error("Error: Cannot find module 'deja-view' from '/home/big/j/code/commitchange/app/assets/javascripts/common/lib/deja-view/todo/js'")

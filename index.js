@@ -8,7 +8,7 @@ var evaluate = require('./lib/evaluate')
 var isExpr = require('./lib/isExpr')
 var getKeys = require('./lib/getKeys')
 var previousOpenTag = require('./lib/previousOpenTag')
-var ev = require('./lib/ev')
+var ev = window.eventer = require('./lib/ev')
 var deepGet = require('./lib/deepGet')
 
 var app = module.exports = {
@@ -17,15 +17,13 @@ var app = module.exports = {
 	_bindings: {}
 }
 
-app.view = function(x) {
+app.view = function(x, node, commentNode) {
 	var self = this
-	if(arguments.length > 1)
-		return iter.map(arguments, function(a) { view(a) })
-	if(!arguments.length)
+	if(x instanceof Array)
+		return iter.map(x, function(key) { view(key, node, commentNode) })
+	if(arguments.length === 0)
 		return self.data
-	if(x instanceof Node)
-		return self.render(x)
-	return evaluate(x, self)
+	return evaluate(x, self, node, commentNode)
 }
 
 app.child = function(x) {
@@ -41,6 +39,7 @@ app.child = function(x) {
 	var childView = copy.shallow(this)
 	childView.clear() 
 	childView.render(childNode)
+	childView.data = copy.deep(this.data)
 	return childView
 }
 
@@ -54,11 +53,11 @@ app.def = function() {
 	else
 		var obj = arguments[0]
 
-	copy.shallow(obj, self.data)
+	copy.deep(obj, self.data)
 	iter.each(flatKeys(obj), function(key) {
 		if(self._bindings[key]) {
 			iter.each(self._bindings[key], function(node) {
-				self.renderNode(node)
+				self.evalComment(node)
 			})
 		}
 	})
@@ -74,23 +73,23 @@ app.render = function(parentNode) {
 	eachNode(parentNode, function(node) {
 		// nodeType 8 is a comment
 		if(node.nodeType === 8 && isExpr(node.textContent)) {
-			iter.each(getKeys(node.textContent), function(k) {
+			var keys = getKeys(node.textContent)
+			iter.each(keys, function(k) {
 				self._bindings[k] = self._bindings[k] || []
 				self._bindings[k].push(node)
 			})
-			self.renderNode(node)
+			if(!length.keys) self.evalComment(node)
 		}
 		return true
 	})
 	return self
 }
 
-app.renderNode = function(commentNode) {
-	var self = this
-	self.node = previousOpenTag(commentNode) // this.node is the comment's previous open tag (usually the parent node)
-	if(!self.node) return
-	self.commentNode = commentNode
-	var result = evaluate(commentNode.textContent, self)
+app.evalComment = function(commentNode) {
+	var self = this,
+	    node = previousOpenTag(commentNode) // node is the comment's previous open tag (usually the parent node)
+	if(!node) return
+	var result = evaluate(commentNode.textContent, self, node, commentNode)
 	if(!result) return
 	// If there's actually some result, then we interpolate it (ie. we inject the result into the dom):
 	if(commentNode.nextSibling && commentNode.nextSibling.className === 'deja-put')
@@ -104,24 +103,24 @@ app.renderNode = function(commentNode) {
 }
 
 app.incr = function(key) {
-	this.def(key, this.get(key) + 1)
+	this.def(key, Number(this.view(key)) + 1)
 	return this
 }
 
 app.decr = function(key) {
-	this.def(key, this.get(key) - 1)
+	this.def(key, this.view(key) - 1)
 	return this
 }
 
 app.toggle = function(key, value) {
-	var existing = this.get(key)
+	var existing = this.view(key)
 	if(existing === val) this.def(key, null)
 	else this.def(key, val)
 	return this
 }
 
 app.push = function(key, val) {
-	this.def(key, this.get(key).concat([val]))
+	this.def(key, this.view(key).concat([val]))
 	return this
 }
 
@@ -132,39 +131,39 @@ app.pop = function(key) {
 }
 
 app.concat = function(key, arr) {
-	this.def(key, this.get(key).concat(arr))
+	this.def(key, this.view(key).concat(arr))
 	return this
 }
 
 // Default view helpers
 
-app.def('show_if', function(pred) {
-	if(this.view(pred)) this.node.style.display = ''
-	else this.node.style.display = 'none'
+app.def('show_if', function(pred, node) {
+	if(this.view(pred)) node.style.display = ''
+	else node.style.display = 'none'
 })
 
-app.def('hide_if', function(pred) {
-	if(this.view(pred)) this.node.style.display = 'none'
-	else this.node.style.display = ''
+app.def('hide_if', function(pred, node) {
+	if(this.view(pred)) node.style.display = 'none'
+	else node.style.display = ''
 })
 
-app.def('repeat', function(arr) {
+app.def('repeat', function(arr, node, commentNode) {
 	arr = this.view(arr)
-	if(!arr || !arr.length) return
-	this.node.style.display = 'none'
-	this.node.removeChild(this.commentNode)
+	if(!arr) return
+	node.style.display = 'none'
+	node.removeChild(commentNode)
 
-	if(this.node.nextSibling && this.node.nextSibling.className === 'deja-repeat') {
-		var wrapper = this.node.nextSibling
-		this.node.nextSibling.innerHTML = ''
+	if(node.nextSibling && node.nextSibling.className === 'deja-repeat') {
+		var wrapper = node.nextSibling
+		node.nextSibling.innerHTML = ''
 	} else {
 		var wrapper = document.createElement('span')
 		wrapper.className = 'deja-repeat'
-		this.node.parentNode.insertBefore(wrapper, this.node.nextSibling)
+		node.parentNode.insertBefore(wrapper, node.nextSibling)
 	}
 
 	for(var i = 0; i < arr.length; ++i) {
-		var cloned = this.node.cloneNode(true),
+		var cloned = node.cloneNode(true),
 		    childView = this.child(cloned)
 		cloned.style.display = ''
 		childView.def('this', arr[i])
@@ -173,7 +172,7 @@ app.def('repeat', function(arr) {
 		childView.clear() // Save memory quicker?
 	}
 
-	this.node.insertBefore(this.commentNode, this.node.firstChild)
+	node.insertBefore(commentNode, node.firstChild)
 	return false
 })
 
@@ -181,23 +180,31 @@ app.def('add', function(x, y) { return this.view(x) + this.view(y) })
 app.def('incr', function(x) { return this.view(x) + 1 })
 app.def('decr', function(x) { return this.view(x) - 1 })
 
-app.def('class', function(val) {
-	this.node.className += ' ' + this.view(val)
+app.def('class', function(val, node) { node.className += ' ' + this.view(val) })
+
+app.def('cat', function() {
+	var self = this
+	var str = ''
+	for(var i = 0; i < arguments.length - 2; ++i)
+		str += self.view(arguments[i])
+	return str
 })
 
 iter.each(ev.events, function(event) {
-	app.def('on_' + event, function(expr) {
-		ev.bind(this.node, event, function(ev) {
-			app.def('event', ev)
-			app.view(expr)
+	app.def('on_' + event, function(expr, node, commentNode) {
+		var self = this
+		ev.unbind(node, event)
+		ev.bind(node, event, function(ev) {
+			self.view(expr, node, commentNode, ev)
 		})
 	})
 })
 
-app.def('empty',  function(arr)  {arr = this.view(arr); return arr && arr.length <= 0})
+app.def('empty',  function(arr)  {arr = this.view(arr); return !arr || arr.length <= 0})
+app.def('not',  function(val)  {return !this.view(val)})
 app.def('length', function(arr) {return this.view(arr).length})
-app.def('attr', function(key, val) { this.node.setAttribute(this.view(key), this.view(val)) })
-app.def('href', function(url) { this.node.setAttribute('href', this.view(url)) })
+app.def('attr', function(key, val, node) { node.setAttribute(this.view(key), this.view(val)) })
+app.def('href', function(url, node) { node.setAttribute('href', this.view(url)) })
 app.def('push', function(val, arrKey) { this.push(this.view(arrKey), this.view(val)) })
 app.def('pop', function(arrKey) { this.pop(this.view(arrKey)) })
 app.def('toggle', function(key, val) { this.toggle(this.view(key), this.view(val)) })
@@ -209,8 +216,10 @@ app.def('if', function(predicate, thenExpr, elseExpr) {
 
 app.def('all', function() {
 
-	for(var i = 0; i < arguments.length; ++i)
-		if(!this.view(arguments[i])) return false
+	var self = this
+	for(var i = 0; i < arguments.length; ++i) {
+		if(arguments[i] && !this.view(arguments[i])) return false
+	}
 	return true
 })
 

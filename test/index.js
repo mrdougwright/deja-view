@@ -6,10 +6,6 @@ var app = require('../'),
     isExpr = require('../lib/isExpr'),
     iter = require('../lib/iter')
 
-/*
-var evaluate = require('../lib/evaluate')
-*/
-
 describe('parse', function() {
 
 	it('denests parens', function() {
@@ -48,6 +44,37 @@ describe('isExpr', function() {
 
 	it('returns null without parens surrounding', function() {
 		assert.equal(isExpr('hey there! (hey lol)'), null)
+	})
+})
+
+describe('.def', function() {
+
+	it('sets a single val', function() {
+		app.def('x', 1)
+		assert.equal(app.data.x, 1)
+	})
+
+	it('sets a nested object', function() {
+		app.def('x.y', 1)
+		assert.equal(app.data.x.y, 1)
+	})
+
+	it('sets two vals in the same nested object without overriding each other', function() {
+		app.def('x.y', 1)
+		app.def('x.z', 420)
+		assert.equal(app.data.x.y, 1)
+	})
+
+	it('sets a nested val using dot notation in a string', function() {
+		app.def('x.y.z', 1)
+		app.def('x.y.q', 420)
+		assert.equal(app.data.x.y.z, 1)
+	})
+
+	it('sets a nested val using dot notation in a string', function() {
+		app.def('x.y', 1)
+		app.def('x.z', 420)
+		assert.equal(app.data.x.y, 1)
 	})
 })
 
@@ -104,8 +131,8 @@ describe('.view', function() {
 	})
 
 	it('allows for the definition of nested dotted keys', function() {
-		app.def('x.y.z', 22)
-		assert.equal(app.data.x.y.z, 22)
+		app.def('a.b.c', 22)
+		assert.equal(app.data.a.b.c, 22)
 	})
 
 })
@@ -114,7 +141,7 @@ describe('.render', function() {
 
 	it('interpolates a num', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (12.32) "))
+		div.appendChild(document.createComment("(12.32)"))
 		app.render(div)
 		assert.equal(div.textContent, '12.32')
 	})
@@ -135,13 +162,7 @@ describe('.render', function() {
 
 	it('interpolates a nested fn', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (str 'answer is' (add 1 2)) "))
-		app.def('str', function() {
-			var self = this;
-			return iter.fold(arguments, '', function(result, s) {
-				return result + ' ' + self.view(s)
-			}).trim()
-		})
+		div.appendChild(document.createComment(" (cat 'answer is ' (add 1 2)) "))
 		app.render(div)
 		assert.equal(div.textContent, 'answer is 3')
 	})
@@ -157,7 +178,7 @@ describe('.render', function() {
 	it('runs a function that can mess with the parent node', function() {
 		var div = document.createElement("div")
 		div.appendChild(document.createComment(" (make-blue) "))
-		app.def('make-blue', function() { this.node.style.color = 'blue' })
+		app.def('make-blue', function(node) { node.style.color = 'blue' })
 		app.render(div)
 		assert.equal(div.style.color, 'blue')
 	})
@@ -165,6 +186,7 @@ describe('.render', function() {
 	it('retrieves nested keys from view data', function() {
 		var div = document.createElement("div")
 		div.appendChild(document.createComment(" (x.y.z) "))
+		app.clear()
 		app.def({x: {y: {z: 1}}})
 		app.render(div)
 		assert.equal(div.textContent, '1')
@@ -173,9 +195,20 @@ describe('.render', function() {
 	it('retrieves unnested but dotted keys from view data', function() {
 		var div = document.createElement("div")
 		div.appendChild(document.createComment(" (x.y.z) "))
+		app.clear()
 		app.def("x.y.z", 420)
 		app.render(div)
 		assert.equal(div.textContent, '420')
+	})
+
+	it('sets nested keys exclusively from each other without overriding', function() {
+		var div = document.createElement("div")
+		div.appendChild(document.createComment(" (x.y) "))
+		app.clear()
+		app.def('x.y', 1)
+		app.def('x.z', 44)
+		app.render(div)
+		assert.equal(div.textContent, '1')
 	})
 })
 

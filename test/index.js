@@ -29,8 +29,14 @@ describe('parse', function() {
 	})
 
 	it('turns an expression into an array of atoms and sub-expressions', function() {
-		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "hey there bro"',
-		    parsed = [{key: 'a'}, 'b (c z)', 'd "hello!"', {num: 433.43}, {str: 'hey there bro'}]
+		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "sup brah"',
+		    parsed = [{key: 'a'}, 'b (c z)', 'd "hello!"', {num: 433.43}, {str: 'sup brah'}]
+		assert.deepEqual(parse(sexpr), parsed)
+	})
+
+	it('correctly parses two strings in a row', function() {
+		var sexpr = "'hey' 'there'",
+		    parsed = [{str: 'hey'}, {str: 'there'}]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 })
@@ -108,7 +114,7 @@ describe('.view', function() {
 	})
 
 	it('returns the return val of various nested functions', function() {
-		assert.equal(app.view('(((add (incr 1) (decr 2'), 3)
+		assert.equal(app.view('(((add   (((add   1 1)))       ((((((add 2    2'), 6)
 	})
 
 	it('more nested lol', function() {
@@ -178,7 +184,7 @@ describe('.render', function() {
 	it('runs a function that can mess with the parent node', function() {
 		var div = document.createElement("div")
 		div.appendChild(document.createComment(" (make-blue) "))
-		app.def('make-blue', function(node) { node.style.color = 'blue' })
+		app.def('make-blue', function(node) { this.node.style.color = 'blue' })
 		app.render(div)
 		assert.equal(div.style.color, 'blue')
 	})

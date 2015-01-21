@@ -277,7 +277,7 @@ app.def('toggle', function(key, val) { this.toggle(this.view(key), this.view(val
 
 app.def('if', function(predicate, thenExpr, elseExpr) {
 	if(this.view(predicate)) return this.view(thenExpr)
-	else return this.view(elseExpr)
+	else if(elseExpr) return this.view(elseExpr)
 })
 
 app.def('and', function() {

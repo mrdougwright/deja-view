@@ -270,8 +270,8 @@ app.def('log', function(expr) { console.log(this.view(expr)) })
 app.def('toggle', function(key, val) { this.toggle(this.view(key), this.view(val)) })
 
 app.def('if', function(predicate, thenExpr, elseExpr) {
-	if(view(predicate)) return view(thenExpr)
-	else return view(elseExpr)
+	if(this.view(predicate)) return this.view(thenExpr)
+	else return this.view(elseExpr)
 })
 
 app.def('and', function() {

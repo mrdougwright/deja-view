@@ -267,6 +267,12 @@ app.def('push', function(val, arrKey) { this.push(this.view(arrKey), this.view(v
 app.def('pop', function(arrKey) { this.pop(this.view(arrKey)) })
 app.def('log', function(expr) { console.log(this.view(expr)) })
 
+app.def('css', function(style_rule, val) {
+	style_rule = this.view(style_rule)
+	val = this.view(val)
+	this.node.style[style_rule] = val
+})
+
 app.def('toggle', function(key, val) { this.toggle(this.view(key), this.view(val)) })
 
 app.def('if', function(predicate, thenExpr, elseExpr) {

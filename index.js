@@ -65,7 +65,7 @@ app.render = function(q) {
 			var node = document.body.querySelector(q)
 	else if(q instanceof Node) var node = q
 	else var node = this.parentNode
-	if(!node) throw new Error("[deja-view] Could not render into: " + q)
+	if(!node) return
 
 	eachNode(node, function(n) {
 		// nodeType 8 is a comment

@@ -223,8 +223,24 @@ app.def('decr', function(key) {
 	return val - 1
 })
 
-app.def('class', function(val) {
-	this.node.className += ' ' + this.view(val)
+app.def('class', function(class_name) {
+	this.node.className += ' ' + this.view(class_name)
+})
+
+app.def('toggle_class', function(class_name) {
+	class_name = this.view(class_name)
+	var index = this.node.className.indexOf(class_name)
+	if(index !== -1)
+		this.node.className = this.node.className.slice(index, class_name.length)
+	else
+		this.node.className += ' ' + class_name
+})
+
+app.def('remove_class', function(class_name) {
+	class_name = this.view(class_name)
+	var index = this.node.className.indexOf(class_name)
+	if(index !== -1)
+		this.node.className = this.node.className.slice(index, class_name.length)
 })
 
 app.def('cat', function() {
@@ -321,7 +337,6 @@ app.def('set_value', function(val) {
 })
 
 app.def('style', function(style_rule, val) {
-	console.log('setting', this.node, this.view(style_rule), this.view(val))
 	this.node.style[this.view(style_rule)] = this.view(val)
 })
 

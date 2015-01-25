@@ -320,6 +320,11 @@ app.def('set_value', function(val) {
 	this.node.value = this.view(val)
 })
 
+app.def('style', function(style_rule, val) {
+	console.log('setting', this.node, this.view(style_rule), this.view(val))
+	this.node.style[this.view(style_rule)] = this.view(val)
+})
+
 app.render(document.body)
 
 /* TODO

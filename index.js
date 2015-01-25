@@ -75,7 +75,6 @@ app.render = function(q) {
 				self._bindings[k] = self._bindings[k] || []
 				self._bindings[k].push(n)
 			})
-			self.evalComment(n)
 		}
 		return true
 	})
@@ -88,7 +87,7 @@ app.evalComment = function(commentNode) {
 
 	self.node = node; self.commentNode = commentNode
 	var result = evaluate(commentNode.textContent, self)
-	if(!result) return
+	if(result === undefined || result === null || result === false || result === '') return
 
 	// If there's actually some result, then we interpolate it (ie. we inject the result into the dom):
 	if(commentNode.nextSibling && commentNode.nextSibling.className === 'deja-put')
@@ -98,7 +97,8 @@ app.evalComment = function(commentNode) {
 		interp.className = 'deja-put'
 		commentNode.parentNode.insertBefore(interp, commentNode.nextSibling)
 	}
-	interp.innerHTML = result
+
+	interp.innerHTML = String(result)
 }
 
 app.incr = function(key) {
@@ -260,7 +260,13 @@ app.def('do', function() {
 
 app.def('empty',  function(arr)  { arr = this.view(arr); return !arr || arr.length <= 0 })
 app.def('not',  function(val)  { return !this.view(val)})
-app.def('length', function(arr) { return this.view(arr).length})
+
+app.def('length', function(arr) {
+	arr = this.view(arr)
+	if(!arr) return 0
+	return arr.length
+})
+
 app.def('attr', function(key, val) { this.node.setAttribute(this.view(key), this.view(val)) })
 app.def('href', function(url) { this.node.setAttribute('href', this.view(url)) })
 app.def('push', function(val, arrKey) { this.push(this.view(arrKey), this.view(val)) })
@@ -309,6 +315,10 @@ app.def('delay', function(ms, expr) {
 })
 
 app.def('input_value', function() { return this.node.value })
+
+app.def('set_value', function(val) {
+	this.node.value = this.view(val)
+})
 
 app.render(document.body)
 

@@ -113,63 +113,86 @@ If you want to display or hide elements on your page depending on your data, you
 
 Remember, every **view expression** (the expression inside the HTML comment) affects its **parent element**. So for the above, it'll only show the `<p>` element if anonymous is true.
 
-In the case of `<input>`, `<img>` or other tags that don't have children,
-simply place view expressions below them to affect them.
+```html
+<input type='text' name='search'>
+<!-- (on_keyup (fetch_results input_value)) -->
+```
+
+In the above example, every time we type in the input field, we call a function
+called `fetch_results`, passing in the value of the input field. In this
+example, `<input>` does not have any child elements, so we cannot place view
+expressions as a child of the element. Instead, we simply place them afterward.
+You can place view expressions directly afterwards `<img>`, `<hr>` or other
+elements without closing tags to affect them.
 
 # create your own view functions
 
 `show_if`, `repeat`, and many more are defined simply by using `def` with two
 arguments, the key and value. If the value is a function, then the function
-will be evaluated when placed into the view. Every function body has
-`this.node` available to it to access the current parent node.
+will be evaluated. Every function has a `this.node` available inside the
+function definition, which allows you to access the current parent node.
 
 Deja uses **extremely** lazy evaluation. The arguments passed into view
 functions are not yet evaluated or even parsed by the time they hit the
 function body. It is up to you to define when you want to parse and evaluate
-the argument by calling `app.view(arg)` on each arg. This allows for easy
+the argument by calling `this.view(arg)` on each arg. This allows for easy
 definition of deffered/delayed functionality such as `if`, `on_click`, `delay`
 etc.
 
-For example, this is how `show_if` is defined:
+Here's how `show_if` is defined:
 
 ```js
-view('show_if', function(predicate) {
-	if(this.view(pred))
-		this.node.style.display = ''
-	else
-		this.node.style.display = 'none'
+app.def('show_if', function(pred) {
+	if(this.view(pred)) this.node.style.display = ''
+	else this.node.style.display = 'none'
 })
 ```
 
-Notice that in the above we have to explicitly call `this.view` on the `pred`
-argument to get the actual value.
+And here's a more generalized `if` construct that takes advantage of the lazy
+evaluation:
+
+```js
+app.def('if', function(predicate, then_expr, else_expr) {
+	if(this.view(pred)) return this.view(then_expr)
+	else if(else_expr) return this.view(else_expr)
+})
+```
 
 # view function reference
 
-* **repeat** Array - repeat the parent node for each element in the array.
-* **show-if** Value - test a Value; if true, display the parent node as default; if false, hide the parent node
-* **hide-if** Value - exact opposite of above
-* **trigger** eventName - trigger an event
-* **when** eventName expr - run a view expression when an event is triggered
-* **set** key val - set the key to the given value in the view's data
-* **default** key val - if the key is not set already, then set it to val
-* **push** val arrayName - push a value into an array in the view, given by the array's key name
-* **pop** arrayName - push a value into an array in the view, given by the array's name
-* **remove** val arrayName - find and remove the value from the array inside the view, given by the array's name
-* **attr** name val - set an attribute to a value on the parent node
-* **remove-attr** name - remove the attribute from the parent node
-* **add-class** val - set the class on the parent node as the value (will append to the node's class list)
-* **remove-class** val - remove the class from the parent node's class list, if it is present
-* **toggle-class** val - remove the class from the parent node's class list if present, add the class if it is absent
+### functions that modify the node
 
-# more examples
+| repeat | Array | repeat the parent node for each element in the array. | `(repeat user_listing)` |
+| show_if | Value(predicate to test) | test a Value; if true, set display to ''; if false, set display to 'none' | `(show_if public_profile)` |
+| hide_if | Value(predicate to test) | test a Value; if false, set display to 'none'; if true set display to '' | `(hide_if anonymous_profile)` |
+| attr | name val | set an attribute to a value on the parent node | `(attr 'href' profile_link)` |
+| remove_attr | name | remove the attribute from the parent node | `(remove_attr 'href')` |
+| toggle_attr | name | remove the attribute from the parent node | `(toggle_attr `data-selected` id)` |
+| class | val | set the class on the parent node as the value (will append to the node's class list) | `(class 'active')` |
+| remove_class | val | remove the class from the parent node's class list, if it is present | `(remove_class 'active')` |
+| toggle_class | val | either remove the class from the parent node's class list if present, or add the class if it is absent | `(toggle_class 'active')` |
+
+### conditionals
+
+| if | Value Expr Expr | if the predicate is true, evaluate the first expression, else evaluate the second expression (optional).  | `(if active_account (class 'active') (class 'inactive'))`
+| unless | Value Expr Expr | the inverse of `if` | `(unless confirmed_account (class 'confirmed'))`
+
+### data manipulation
+
+| set | String Value | set the key to the given value in the view's data | `(set 'x' 1)` |
+| push | Value String | push a value into an array in the view, given by the array's key name | `(push 1 'numbers')` |
+| pop | String | push a value into an array in the view, given by the array's name | `(pop 'user_list')` |
+| remove | Value String | find and remove the value from the array inside the view, given by the array's name | `(remove user 'user_list')` |
+
+Legend:
+
+# app examples
 
 ### a simple to-do list
 
 Let's build a very simple to-do list where we can add new items with an input field and remove finished items. We can implement the entire thing with only a few simple view expressions!
 
 ```html
-
 <form>
 	<!-- (on_submit (push form_data todos)) -->
 	<input type='text' placeholder='What do you need to do?'>
@@ -179,13 +202,16 @@ Let's build a very simple to-do list where we can add new items with an input fi
 	<li>
 		<!-- (repeat todos) -->
 		<!-- (this) -->
-		(<a> <!-- (on_click (remove this todos)) --> done </a>)
+		(<a> <!-- (on_click (remove this todos)) --> finished! </a>)
 	</li>
 </ul>
+
+<script>
+app.def('todos', ['Do the laundry'])
+</script>
 ```
 
-
-That's it! In only a dozen lines we have a fully functioning to-do list that will even store everything to localStorage.
+That's it! In only a dozen lines we have a functioning to-do list.
 
 ## patterns & tips
 
@@ -199,11 +225,3 @@ Reasons for using S-Expressions:
 * It makes it clear that the view expressions are **not** javascript
 * It's very fast and simple to parse
 * It is visually scannable as distinct from html, but still reads similarly. It's also more quickly differentiated from regular comments
-
-## view expression grammar
-
-E = Key|Str|Num|Arr|('(' (E ' ')+  ')')
-Key = /../
-Str = /../
-Num = /../
-Arr = /../

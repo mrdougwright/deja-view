@@ -255,16 +255,16 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 	'mouseenter', 'mouseleave', 'scroll', 'blur', 'focus', 'input',
 	'submit', 'keydown', 'keypress', 'keyup'],
 	function(event) {
-	app.def('on_' + event, function(expr) {
-		if(!this.node) throw new Error("[deja-view] Element not found for on_" + event + " event: " + this.node, event)
-		var self = this, node = self.node, args = arguments
-		node['on' + event] = function(ev) {
-			ev.preventDefault()
-			self.node = node
-			self.event = event
-			self.view(expr)
-		}
-	})
+		app.def('on_' + event, function(expr) {
+			if(!this.node) return
+			var self = this, node = self.node, args = arguments
+			node['on' + event] = function(ev) {
+				ev.preventDefault()
+				self.node = node
+				self.event = event
+				self.view(expr)
+			}
+		})
 })
 
 app.def('do', function() {
@@ -338,6 +338,10 @@ app.def('set_value', function(val) {
 
 app.def('style', function(style_rule, val) {
 	this.node.style[this.view(style_rule)] = this.view(val)
+})
+
+app.def('form_data', function() {
+	return new FormData(this.node)
 })
 
 app.render(document.body)

@@ -7,8 +7,7 @@ really simple, fun, &amp; small but powerful UX library
 * describe behavior in your dom using **view expressions**, which you can extend yourself endlessly
 * compose and extend views very easily
 * automatically cache the state of your view to local storage
-* only 500 lines (10kb)
-* IE6+ compatible
+* small, no dependencies
 
 ## installing
 
@@ -19,7 +18,7 @@ npm install deja-view
 ```
 
 ```js
-var view = require('deja-view')
+var app = require('deja-view')
 ```
 
 ## displaying and updating data on the page
@@ -32,10 +31,10 @@ deja uses HTML comments for **view expressions**. Wrap your expressions in paren
 </p>
 ```
 
-Then in your js:
+Then in your js, use `def` to set data:
 
 ```js
-view('name', 'Bob Ross')
+app.def('name', 'Bob Ross')
 ```
 
 The above produces
@@ -46,10 +45,10 @@ The above produces
 </p>
 ```
 
-If we set name again later, your page will update automatically:
+If we set `'name'` again, the page will update automatically:
 
 ```js
-view('name', 'Bob Dole')
+app.def('name', 'Bob Dole')
 ```
 
 ```html
@@ -80,10 +79,10 @@ Every **view expression** affects its **parent element**. Use the `repeat` comma
 ```
 
 ```js
-view('pokemon', [{name: 'Snorlax', weight: 1014.1}, {name: 'Psyduck', weight: 43.2}])
+app.def('pokemon', [{name: 'Snorlax', weight: 1014.1}, {name: 'Psyduck', weight: 43.2}])
 ```
 
-This will render as:
+This will render like:
 
 ```html
 <table>
@@ -103,33 +102,47 @@ This will render as:
 
 # conditionals in your view
 
-If you want to display or hide elements on your page depending on your data, you can use `show-if` and `hide-if`
+If you want to display or hide elements on your page depending on your data, you can use `show_if` and `hide_if`
 
 ```html
 <p>
-	<!-- (show-if anonymous) -->
+	<!-- (show_if anonymous) -->
 	You are an anonymous user.
 </p>
 ```
 
-Remember, every **view expression** (the HTML comment) affects its **parent element**. So for the above, it'll only show the `<p>` element if anonymous is true.
+Remember, every **view expression** (the expression inside the HTML comment) affects its **parent element**. So for the above, it'll only show the `<p>` element if anonymous is true.
+
+In the case of `<input>`, `<img>` or other tags that don't have children,
+simply place view expressions below them to affect them.
 
 # create your own view functions
 
-`show-if`, `repeat`, and many more are defined simply by calling `view` with two arguments, where the first is the string (the name of the function), and the second is the function.
+`show_if`, `repeat`, and many more are defined simply by using `def` with two
+arguments, the key and value. If the value is a function, then the function
+will be evaluated when placed into the view. Every function body has
+`this.node` available to it to access the current parent node.
 
-This is how `show-if` is defined inside `deja-view`
+Deja uses **extremely** lazy evaluation. The arguments passed into view
+functions are not yet evaluated or even parsed by the time they hit the
+function body. It is up to you to define when you want to parse and evaluate
+the argument by calling `app.view(arg)` on each arg. This allows for easy
+definition of deffered/delayed functionality such as `if`, `on_click`, `delay`
+etc.
+
+For example, this is how `show_if` is defined:
 
 ```js
-view('show-if', function(predicate) {
-	if(predicate)
-		this.node.display = ''
+view('show_if', function(predicate) {
+	if(this.view(pred))
+		this.node.style.display = ''
 	else
-		this.node.display = 'none'
+		this.node.style.display = 'none'
 })
 ```
 
-You can always access the node that your view function is currently inside of by using `this.node`
+Notice that in the above we have to explicitly call `this.view` on the `pred`
+argument to get the actual value.
 
 # view function reference
 
@@ -158,8 +171,7 @@ Let's build a very simple to-do list where we can add new items with an input fi
 ```html
 
 <form>
-
-<!-- (on-submit (push form-data todos)) -->
+	<!-- (on_submit (push form_data todos)) -->
 	<input type='text' placeholder='What do you need to do?'>
 </form>
 
@@ -167,72 +179,13 @@ Let's build a very simple to-do list where we can add new items with an input fi
 	<li>
 		<!-- (repeat todos) -->
 		<!-- (this) -->
-		(<a> <!-- (on-click (remove this todos)) --> done </a>)
+		(<a> <!-- (on_click (remove this todos)) --> done </a>)
 	</li>
 </ul>
 ```
 
 
 That's it! In only a dozen lines we have a fully functioning to-do list that will even store everything to localStorage.
-
-### opening a modal
-
-To open modals in your application, you can use a the `trigger` view function:
-
-```html
-<a>
-	<!-- (on-click (trigger 'hello-modal')) -->
-	Get a greeting
-</a>
-
-<div class='modal hide'>
-	<!-- (when 'hello-modal' (toggle-class 'is-shown')) -->
-
-	<a>
-		<!-- (on-click (trigger 'hello-modal')) -->
-		Close modal
-	</a>
-
-	<p>Hello to you!</p>
-
-</div>
-```
-
-with a few expressions, we can toggle a class on a modal `div` using events.
-
-
-### form validation
-
-Here's a sample of how you could write a form validation plugin with very little code
-
-```html 
-<form>
-	<div class='field'>
-		<input type='email' required placeholder='Email address'>
-	</div>
-
-	<div class='field'>
-		<input type='password' required placeholder='password' name='password'>
-	</div>
-
-	<div class='field'>
-		<!-- (validate-match 'password') -->
-		<input type='password' required placeholder='confirm password' name='password_confirmation'>
-	</div>
-
-</form>
-```
-
-```js
-view('validate-match', function(name) {
-	var input = this.node.querySelector('input')
-	var form = this.node.parentNode
-	var inputMatch = form.querySelector("input[name='" + name + "']")
-	if(input.value !== inputMatch.value) alert("invalid omg!!!!")
-})
-```
-
-## utilities
 
 ## patterns & tips
 

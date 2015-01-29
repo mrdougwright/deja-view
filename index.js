@@ -75,6 +75,7 @@ app.render = function(q) {
 				self._bindings[k] = self._bindings[k] || []
 				self._bindings[k].push(n)
 			})
+			// self.evalComment(n)
 		}
 		return true
 	})
@@ -133,6 +134,8 @@ app.concat = function(key, arr) {
 	this.def(key, this.view(key).concat(arr))
 	return this
 }
+
+app.render(document.body)
 
 // Default view helpers
 
@@ -224,7 +227,8 @@ app.def('decr', function(key) {
 })
 
 app.def('class', function(class_name) {
-	this.node.className += ' ' + this.view(class_name)
+	class_name = this.view(class_name)
+	if(this.node.className.indexOf(class_name) === -1) this.node.className += ' ' + class_name
 })
 
 app.def('toggle_class', function(class_name) {
@@ -237,10 +241,7 @@ app.def('toggle_class', function(class_name) {
 })
 
 app.def('remove_class', function(class_name) {
-	class_name = this.view(class_name)
-	var index = this.node.className.indexOf(class_name)
-	if(index !== -1)
-		this.node.className = this.node.className.slice(index, class_name.length)
+	this.node.className = this.node.className.replace(this.view(class_name), '')
 })
 
 app.def('cat', function() {
@@ -343,8 +344,6 @@ app.def('style', function(style_rule, val) {
 app.def('form_data', function() {
 	return new FormData(this.node)
 })
-
-app.render(document.body)
 
 /* TODO
 	*

@@ -75,7 +75,7 @@ app.render = function(q) {
 				self._bindings[k] = self._bindings[k] || []
 				self._bindings[k].push(n)
 			})
-			// self.evalComment(n)
+			self.evalComment(n)
 		}
 		return true
 	})
@@ -87,7 +87,7 @@ app.evalComment = function(commentNode) {
 	if(!node) return
 
 	self.node = node; self.commentNode = commentNode
-	var result = evaluate(commentNode.textContent, self)
+	var result = evaluate(commentNode.textContent.slice(1), self)
 	if(result === undefined || result === null || result === false || result === '') return
 
 	// If there's actually some result, then we interpolate it (ie. we inject the result into the dom):
@@ -177,7 +177,6 @@ app.def('repeat', function(arr) {
 		childView.def('this', arr[i])
 		if(typeof arr[i] === 'object') childView.def(arr[i])
 		wrapper.appendChild(cloned)
-		childView.clear() // Save memory quicker?
 	}
 
 	this.node.insertBefore(this.commentNode, this.node.firstChild)
@@ -214,9 +213,11 @@ app.def('div', function(x, y) {
 
 app.def('incr', function(key) {
 	key = this.view(key)
-	var val = this.view(key)
-	this.def(key, val + 1)
-	return val + 1
+	var val = Number(this.view(key))
+	if(val) {
+		this.def(key, val + 1)
+		return val + 1
+	}
 })
 
 app.def('decr', function(key) {
@@ -226,9 +227,23 @@ app.def('decr', function(key) {
 	return val - 1
 })
 
+add_class = function(node, class_name) {
+	if(node.className.indexOf(class_name) === -1)
+		node.className += ' ' + class_name
+}
+
+remove_class = function(node, class_name) {
+	node.className = node.className.replace(class_name, '')
+}
+
 app.def('class', function(class_name) {
-	class_name = this.view(class_name)
-	if(this.node.className.indexOf(class_name) === -1) this.node.className += ' ' + class_name
+	add_class(this.node, this.view(class_name))
+})
+
+app.def('class_if', function(predicate, class_name) {
+	predicate = this.view(predicate)
+	if(predicate) add_class(this.node, this.view(class_name))
+	else remove_class(this.node, this.view(class_name))
 })
 
 app.def('toggle_class', function(class_name) {
@@ -241,7 +256,7 @@ app.def('toggle_class', function(class_name) {
 })
 
 app.def('remove_class', function(class_name) {
-	this.node.className = this.node.className.replace(this.view(class_name), '')
+	remove_class(this.node, this.view(class_name))
 })
 
 app.def('cat', function() {
@@ -250,7 +265,6 @@ app.def('cat', function() {
 		return str += self.view(term)
 	})
 })
-
 
 iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 	'mouseenter', 'mouseleave', 'scroll', 'blur', 'focus', 'input',
@@ -266,6 +280,14 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 				self.view(expr)
 			}
 		})
+})
+
+app.def('any_event', function() {
+
+	var expr = arguments[arguments.length - 1]
+	for(var i = 0; i < arguments.length - 1; ++i) {
+		this.view(arguments[i] + ' (' + expr + ')')
+	}
 })
 
 app.def('do', function() {
@@ -312,8 +334,10 @@ app.def('and', function() {
 })
 
 app.def('or', function() {
-	for(var i = 0; i < arguments.length; ++i)
-		if(this.view(arguments[i])) return true
+	for(var i = 0; i < arguments.length; ++i) {
+		var term = this.view(arguments[i])
+		if(term) return term
+	}
 	return false
 })
 
@@ -337,6 +361,12 @@ app.def('set_value', function(val) {
 	this.node.value = this.view(val)
 })
 
+app.def('select_option', function(val) {
+	val = this.view(val)
+	var option = this.node.querySelector("option[value='" + val + "']")
+	if(option) option.setAttribute('selected', 'selected')
+})
+
 app.def('style', function(style_rule, val) {
 	this.node.style[this.view(style_rule)] = this.view(val)
 })
@@ -345,7 +375,52 @@ app.def('form_data', function() {
 	return new FormData(this.node)
 })
 
+app.def('eq', function() {
+	var fn = function(x, y) { return x == y }
+	return compare(fn, arguments, this)
+})
+
+app.def('<', function() {
+	var fn = function(x, y) { return x < y }
+	return compare(fn, arguments, this)
+})
+
+app.def('>', function() {
+	var fn = function(x, y) { return x > y }
+	return compare(fn, arguments, this)
+})
+
+app.def('<=', function() {
+	var fn = function(x, y) { return x <= y }
+	return compare(fn, arguments, this)
+})
+
+app.def('>=', function() {
+	var fn = function(x, y) { return x >= y }
+	return compare(fn, arguments, this)
+})
+
+function compare(fn, args, view) {
+	var last = view.view(args[0])
+	for(var i = 1; i < args.length; ++i) {
+		if(!fn(last, view.view(args[i]))) return false
+		last = view.view(args[i])
+	}
+	return true
+}
+
+app.def('reload', function() {
+	window.location.reload()
+})
+
+app.def('redirect', function(url) {
+	window.location.href = this.view(url)
+})
+
 /* TODO
+	*
+	* - Print comment node on exceptions
+	*   - write a little exception printing lib for dejaview
 	*
 	* -Pre-evaluate each argument for each bound function
 	* -Set node on the view ('this') for each def function

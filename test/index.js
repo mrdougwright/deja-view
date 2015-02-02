@@ -3,17 +3,14 @@ var assert = require('assert'),
 
 var app = require('../'),
     parse = require('../lib/parse'),
+    evaluate = require('../lib/evaluate'),
     isExpr = require('../lib/isExpr'),
     iter = require('../lib/iter')
 
 describe('parse', function() {
 
 	it('denests parens', function() {
-		assert.deepEqual(parse('(1)'), ['1'])
-	})
-
-	it('denests arbitrary opening parens', function() {
-		assert.deepEqual(parse('(1'), ['1'])
+		assert.deepEqual(parse('(1)'), [{num: 1}])
 	})
 
 	it('turns a num into a demarcated number', function() {
@@ -28,15 +25,23 @@ describe('parse', function() {
 		assert.deepEqual(parse('xyz'), [{key: "xyz"}])
 	})
 
+	it('turns a bool into a demarcated key', function() {
+		assert.deepEqual(parse('xyz'), [{key: "xyz"}])
+	})
+
+	it('turns a bool into a demarcated key', function() {
+		assert.deepEqual(parse('xyz'), [{key: "xyz"}])
+	})
+
 	it('turns an expression into an array of atoms and sub-expressions', function() {
 		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "sup brah"',
-		    parsed = [{key: 'a'}, 'b (c z)', 'd "hello!"', {num: 433.43}, {str: 'sup brah'}]
+		    parsed = [{key: 'a'}, '(b (c z))', '(d "hello!")', '433.43', "\"sup brah\""]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 
 	it('correctly parses two strings in a row', function() {
 		var sexpr = "'hey' 'there'",
-		    parsed = [{str: 'hey'}, {str: 'there'}]
+		    parsed = [{str: "hey"}, "'there'"]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 })
@@ -52,6 +57,7 @@ describe('isExpr', function() {
 		assert.equal(isExpr('hey there! (hey lol)'), null)
 	})
 })
+
 
 describe('.def', function() {
 
@@ -84,6 +90,7 @@ describe('.def', function() {
 	})
 })
 
+
 describe('.view', function() {
 
 	it('returns a single num', function() {
@@ -91,8 +98,7 @@ describe('.view', function() {
 	})
 
 	it('returns a single num wrapped in arbitrary parens', function() {
-		assert.equal(app.view('(1)'), 1)
-		assert.equal(app.view('(((1)'), 1)
+		assert.equal(app.view('(((1)))'), 1)
 	})
 
 	it('returns a single str', function() {
@@ -101,7 +107,7 @@ describe('.view', function() {
 
 	it('returns the value for a single key set into the view data', function() {
 		app.def('x', 420)
-		assert.equal(app.view('(x'), 420)
+		assert.equal(app.view('x'), 420)
 	})
 
 	it('returns the return val of a singleton function', function() {
@@ -110,27 +116,22 @@ describe('.view', function() {
 	})
 
 	it('returns the return val of a function taking atoms as params', function() {
-		assert.equal(app.view('(((add 1 2'), 3)
+		assert.equal(app.view('add 1 2'), 3)
 	})
 
 	it('returns the return val of various nested functions', function() {
-		assert.equal(app.view('(((add   (((add   1 1)))       ((((((add 2    2'), 6)
+		assert.equal(app.view('add   (add   1 1)       (add 2  2)'), 6)
 	})
 
 	it('more nested lol', function() {
-		assert.equal(app.view('(((add (add 1 1) (add (add 3 4) (add 2 2)'), 13)
-	})
-
-	it('evaluates functions returned by another function', function() {
-		app.def('addadd', function(x,y) { return function(z) { return this.view(x) + this.view(y) + this.view(z) }})
-		assert.equal(app.view('((addadd 1 2) 3)'), 6)
+		assert.equal(app.view('add (add 1 1) (add (add 3 4) (add 2 2))'), 13)
 	})
 
 	it('evaluates keys that dont exist as empty string', function() {
 		assert.equal(app.view('(watskfasdasdfasd)'), '')
 	})
 
-	it('allows for the definition of partial application of functions', function() {
+	xit('allows for the definition of partial application of functions', function() {
 		app.def('partial', 'hi', function(name) { return 'hi ' + this.view(name) })
 		// TODO
 		// assert.equal(view('partial 420'), 'hi 420')
@@ -143,6 +144,7 @@ describe('.view', function() {
 
 })
 
+/*
 describe('.render', function() {
 
 	it('interpolates a num', function() {
@@ -241,4 +243,4 @@ describe('data binding/updating', function() {
 		assert.equal(div.textContent, '6')
 	})
 })
-
+*/

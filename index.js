@@ -190,25 +190,23 @@ app.def('add', function() {
 	})
 })
 
-app.def('sub', function(x, y) {
+app.def('sub', function() {
 	var self = this
 	return iter.fold(arguments, 0, function(diff, term) {
 		return diff - self.view(term)
 	})
 })
 
-app.def('mul', function(x, y) {
+app.def('mul', function() {
 	var self = this
 	return iter.fold(arguments, 0, function(product, term) {
 		return product * self.view(term)
 	})
 })
 
-app.def('div', function(x, y) {
+app.def('div', function(x,y) {
 	var self = this
-	return iter.fold(arguments, 0, function(quot, term) {
-		return quot / self.view(term)
-	})
+	return self.view(x)/self.view(y)
 })
 
 app.def('incr', function(key) {
@@ -341,21 +339,22 @@ app.def('or', function() {
 	return false
 })
 
-app.def('delay', function(ms, expr) {
-	var self = this, timer = 0, ms = self.view(ms), node = self.node
-	setTimeout(function() {
-		self.node = node
-		self.view(expr)
-	}, ms)
-
+var delay = (function() {
 	var timer = 0
 	return function(ms, callback) {
 		clearTimeout(timer)
 		timer = setTimeout(callback, ms)
 	}
+})()
+
+app.def('delay', function(ms, expr) {
+	var self = this
+	delay(self.view(ms), function() {self.view(expr)})
 })
 
-app.def('input_value', function() { return this.node.value })
+app.def('input_value', function() {
+	return this.node.value
+})
 
 app.def('set_value', function(val) {
 	this.node.value = this.view(val)
@@ -409,13 +408,9 @@ function compare(fn, args, view) {
 	return true
 }
 
-app.def('reload', function() {
-	window.location.reload()
-})
-
-app.def('redirect', function(url) {
-	window.location.href = this.view(url)
-})
+app.def('reload', function() { window.location.reload() })
+app.def('redirect', function(url) { window.location.href = this.view(url) })
+app.def('stringify', function(obj) { return JSON.stringify(this.view(obj)) })
 
 /* TODO
 	*

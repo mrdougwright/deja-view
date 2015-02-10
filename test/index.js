@@ -1,11 +1,11 @@
 var assert = require('assert'),
-    domify = require('domify')
+	domify = require('domify')
 
-var app = require('../'),
-    parse = require('../lib/parse'),
-    evaluate = require('../lib/evaluate'),
-    isExpr = require('../lib/isExpr'),
-    iter = require('../lib/iter')
+var app = window.app = require('../'),
+	parse = require('../lib/parse'),
+	evaluate = require('../lib/evaluate'),
+	isExpr = require('../lib/isExpr'),
+	iter = require('../lib/iter')
 
 describe('parse', function() {
 
@@ -15,7 +15,7 @@ describe('parse', function() {
 
 	it('turns a num into a demarcated number', function() {
 		assert.deepEqual(parse('1'), [{num: 1}])
-	})
+})
 
 	it('turns a str into a demarcated string', function() {
 		assert.deepEqual(parse('"what\'s up there bro?"'), [{str: "what's up there bro?"}])
@@ -35,13 +35,13 @@ describe('parse', function() {
 
 	it('turns an expression into an array of atoms and sub-expressions', function() {
 		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "sup brah"',
-		    parsed = [{key: 'a'}, '(b (c z))', '(d "hello!")', '433.43', "\"sup brah\""]
+			parsed = [{key: 'a'}, '(b (c z))', '(d "hello!")', '433.43', "\"sup brah\""]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 
 	it('correctly parses two strings in a row', function() {
 		var sexpr = "'hey' 'there'",
-		    parsed = [{str: "hey"}, "'there'"]
+			parsed = [{str: "hey"}, "'there'"]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 })
@@ -144,7 +144,6 @@ describe('.view', function() {
 
 })
 
-/*
 describe('.render', function() {
 
 	it('interpolates a num', function() {
@@ -220,7 +219,6 @@ describe('.render', function() {
 	})
 })
 
-
 describe('data binding/updating', function() {
 
 	it('updates an interpolation when data is changed', function() {
@@ -243,4 +241,98 @@ describe('data binding/updating', function() {
 		assert.equal(div.textContent, '6')
 	})
 })
-*/
+
+describe('repeat', function() {
+
+	it('repeats an array of vals', function() {
+		var el = domify("<div><div><!-- (repeat xs) --><!-- (this) --></div></div>")
+		app.def('xs', [1,2,3])
+		app.render(el)
+		assert.equal(el.textContent, '123')
+	})
+
+	it('repeats an evaluated array', function() {
+		app.def('tail', function(arr) {
+			arr = this.view(arr)
+			return arr.slice(1)
+		})
+		var el = domify("<div><div><!-- (repeat (tail xs))) --><!-- (this) --></div></div>")
+		app.def('xs', [1,2,3])
+		app.render(el)
+		assert.equal(el.textContent, '23')
+	})
+
+	it('repeats changes in multiple arrays', function() {
+		app.def('tail', function(arr) {
+			arr = this.view(arr)
+			return arr.slice(1)
+		})
+
+		var el = domify(
+"<div id='parent'>\
+<div id='xs'><!-- (repeat xs) --><!-- (this) --></div>\
+<div id='ys'><!-- (repeat ys) --><!-- (this) --></div>\
+</div>")
+
+		app.def('xs', [1,2,3])
+		app.def('ys', [4,5,6])
+		app.render(el)
+		assert.equal(el.textContent, '123456')
+
+		app.def('ys', [7,8,9])
+		assert.equal(el.textContent, '123789')
+
+		app.def('xs', [10,11,12])
+		assert.equal(el.textContent, '101112789')
+	})
+
+	it('allows for actions inside of each iteration to affect the parent', function() {
+		var el = domify("<div><div><!-- (repeat xs) --><!-- (set 'z' this) --></div></div>")
+		app.def('xs', [1,2,3])
+		app.def('z', 9)
+		app.render(el)
+		assert.equal(app.view('z'), 3)
+	})
+})
+
+describe('scope', function() {
+
+	it('namespaces everything within the node', function() {
+		var el = domify("<div><div><!-- (scope 'x') --><!-- (y) --></div></div>")
+		app.def("x", {y: 'heyo!'})
+		app.render(el)
+		assert.equal(el.textContent, 'heyo!')
+	})
+
+	it('shadows parent keys', function() {
+		var el = domify("<div><div><!-- (scope 'obj') --><!-- (x) --></div></div>")
+		app.def('x', 'x')
+		app.def('obj', {y: 'y'})
+		app.render(el)
+		assert.equal(el.textContent, 'x')
+	})
+
+	it('returns parent data from within a scope when undefined', function() {
+		var el = domify("<div><div><!-- (scope 'obj') --><!-- (x) --></div></div>")
+		app.def('x', 'x')
+		app.def('obj', {y: 'y'})
+		app.render(el)
+		assert.equal(el.textContent, 'x')
+	})
+
+	it('sets parent data from within a scope when undefined', function() {
+		var el = domify("<div><div><!-- (scope 'obj') --><!-- (set 'x' 'hey!') --></div></div>")
+		app.def('x', 'x')
+		app.def('obj', {y: 'y'})
+		app.render(el)
+		assert.equal(app.view('x'), 'hey!')
+	})
+
+	it('gets the parents parents data', function() {
+		var el = domify("<div><div><!-- (scope 'x.y') --><!-- (a) --></div></div>")
+		app.def('x', {y: 1})
+		app.def('a', 'a')
+		app.render(el)
+		assert.equal(el.textContent, 'a')
+	})
+})

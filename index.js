@@ -1,14 +1,13 @@
-var eachNode = require('./lib/eachNode')
-var copy = require('./lib/copy')
-var iter = require('./lib/iter')
-var parse = require('./lib/parse')
-var flatKeys = require('./lib/flatKeys')
-var unflattenKeys = require('./lib/unflattenKeys')
-var evaluate = require('./lib/evaluate')
-var isExpr = require('./lib/isExpr')
-var getKeys = require('./lib/getKeys')
-var previousOpenTag = require('./lib/previousOpenTag')
-var deepGet = require('./lib/deepGet')
+var each_node = require('./lib/each_node'),
+	copy = require('./lib/copy'),
+	iter = require('./lib/iter'),
+	parse = require('./lib/parse'),
+	flatKeys = require('./lib/flatKeys'),
+	unflattenKeys = require('./lib/unflattenKeys'),
+	evaluate = require('./lib/evaluate'),
+	isExpr = require('./lib/isExpr'),
+	getKeys = require('./lib/getKeys'),
+	prev_open_tag = require('./lib/prev_open_tag')
 
 var app = module.exports = {
 	config: {},
@@ -20,16 +19,8 @@ app.view = function(x) {
 	var self = this
 	if(x instanceof Array)
 		return iter.map(x, function(key) { self.view(key) })
-	if(arguments.length === 0)
-		return self.data
-	return evaluate(x, self)
-}
-
-app.child = function(x) {
-	var childView = copy.shallow(this)
-	childView.clear().render(x)
-	childView.data = copy.deep(this.data)
-	return childView
+	if(arguments.length === 0) return self.data
+	return evaluate(x, self, self.current_scope)
 }
 
 app.clear = function() { this._bindings = {}; return this }
@@ -46,18 +37,19 @@ app.def = function() {
 	iter.each(flatKeys(obj), function(key) {
 		if(self._bindings[key]) {
 			iter.each(self._bindings[key], function(node) {
-				self.evalComment(node)
+				self.eval_comment(node, null)
 			})
 		}
 	})
 	return self
 }
 
-app.render = function(q) {
-	var self = this
+app.render = function(q, scope) {
+	var self = this, scopes = []
+	if(scope) scopes.push(scope)
 
 	if(q instanceof Array || q instanceof NodeList)
-		iter.each(q, function(n) { self.render(n) })
+		iter.each(q, function(n) { self.render(n, scope) })
 	else if(typeof q === 'string')
 		if(this.parentNode)
 			var node = this.parentNode.querySelector(q)
@@ -67,7 +59,9 @@ app.render = function(q) {
 	else var node = this.parentNode
 	if(!node) return
 
-	eachNode(node, function(n) {
+	each_node(node, function(n) {
+		var cont = true
+		self.current_scope = scopes[scopes.length-1]
 		// nodeType 8 is a comment
 		if(n.nodeType === 8 && isExpr(n.textContent)) {
 			var keys = getKeys(n.textContent)
@@ -75,20 +69,27 @@ app.render = function(q) {
 				self._bindings[k] = self._bindings[k] || []
 				self._bindings[k].push(n)
 			})
-			self.evalComment(n)
+
+			var result = self.eval_comment(n)
+
+			if(result) {
+				cont = !result.skip
+				if(result.scope) scopes.push(result.scope)
+			} else cont = true
 		}
-		return true
-	})
+		return cont
+	}, function(n) { scopes.pop() })
+
 	return self
 }
 
-app.evalComment = function(commentNode) {
-	var self = this, node = previousOpenTag(commentNode)
+app.eval_comment = function(commentNode) {
+	var self = this, node = prev_open_tag(commentNode)
 	if(!node) return
 
 	self.node = node; self.commentNode = commentNode
-	var result = evaluate(commentNode.textContent.slice(1), self)
-	if(result === undefined || result === null || result === false || result === '') return
+	var result = evaluate(commentNode.textContent, self, self.current_scope)
+	if(result === undefined || result === null || result === false || result === '' || result.skip || result.scope) return result
 
 	// If there's actually some result, then we interpolate it (ie. we inject the result into the dom):
 	if(commentNode.nextSibling && commentNode.nextSibling.className === 'deja-put')
@@ -96,10 +97,12 @@ app.evalComment = function(commentNode) {
 	else {
 		var interp = document.createElement('span')
 		interp.className = 'deja-put'
-		commentNode.parentNode.insertBefore(interp, commentNode.nextSibling)
+		var parent = commentNode.parentNode
+		if(parent) parent.insertBefore(interp, commentNode.nextSibling)
 	}
-
 	interp.innerHTML = String(result)
+
+	return result
 }
 
 app.incr = function(key) {
@@ -139,6 +142,8 @@ app.render(document.body)
 
 // Default view helpers
 
+app.def('scope', function(key) { return {scope: this.view(key)} })
+
 app.def('set', function(key, val) {
 	key = this.view(key)
 	val = this.view(val)
@@ -156,31 +161,29 @@ app.def('hide_if', function(pred) {
 })
 
 app.def('repeat', function(arr) {
-	arr = this.view(arr)
-	if(!arr) return
-	this.node.style.display = 'none'
-	this.node.removeChild(this.commentNode)
+	var arr = this.view(arr), comment = this.commentNode, node = this.node
+	node.style.display = 'none'
+	node.removeChild(comment)
+	this.def("each", arr)
 
-	if(this.node.nextSibling && this.node.nextSibling.className === 'deja-repeat') {
-		var wrapper = this.node.nextSibling
-		this.node.nextSibling.innerHTML = ''
+	if(node.nextSibling && node.nextSibling.className === 'deja-repeat') {
+		var wrapper = node.nextSibling
+		node.nextSibling.innerHTML = ''
 	} else {
 		var wrapper = document.createElement('span')
 		wrapper.className = 'deja-repeat'
-		this.node.parentNode.insertBefore(wrapper, this.node.nextSibling)
+		node.parentNode.insertBefore(wrapper, node.nextSibling)
 	}
 
 	for(var i = 0; i < arr.length; ++i) {
-		var cloned = this.node.cloneNode(true),
-		    childView = this.child(cloned)
+		var cloned = node.cloneNode(true)
 		cloned.style.display = ''
-		childView.def('this', arr[i])
-		if(typeof arr[i] === 'object') childView.def(arr[i])
 		wrapper.appendChild(cloned)
+		this.render(cloned, 'each.' + i)
 	}
 
-	this.node.insertBefore(this.commentNode, this.node.firstChild)
-	return false
+	node.insertBefore(comment, node.firstChild)
+	return {skip: true}
 })
 
 app.def('add', function() {
@@ -271,12 +274,19 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 		app.def('on_' + event, function(expr) {
 			if(!this.node) return
 			var self = this, node = self.node, args = arguments
-			node['on' + event] = function(ev) {
-				ev.preventDefault()
-				self.node = node
-				self.event = event
-				self.view(expr)
-			}
+			var existing = node['on' + event]
+			if(typeof existing === 'function')
+				node['on' + event] = function(ev) {
+					existing(ev)
+					self.view(expr)
+				}
+			else
+				node['on' + event] = function(ev) {
+					ev.preventDefault()
+					self.node = node
+					self.event = event
+					self.view(expr)
+				}
 		})
 })
 
@@ -415,7 +425,6 @@ app.def('stringify', function(obj) { return JSON.stringify(this.view(obj)) })
 /* TODO
 	*
 	* - Print comment node on exceptions
-	*   - write a little exception printing lib for dejaview
 	*
 	* -Pre-evaluate each argument for each bound function
 	* -Set node on the view ('this') for each def function

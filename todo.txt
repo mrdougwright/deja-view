@@ -1,9 +1,35 @@
-x make 110% sure you know what you want
-x write an s-expression lexer
-x write an s-expression parser
-x write an s-expression evaluator
-x find all s-expression comments in the document
-- eval them and bind their keys
-- re-eval the bound s-exp when the key is set
-- done
+data sharing/inheritance:
+	- just use one single giant state object
+	- a single data object and bindings object
+	- just namespace stuff
+
+var app = require("deja-view")
+app.def('profile', {avatar: 'x.jpg', mini_bio: 'x y z'})
+app.def('user', {name: 'x'})
+
+app.def('wizard.')
+
+<p><!-- (hide_if goodbye) --> Welcome, <!-- (user.name) --></p>
+<p><!-- (show_if goodbye) --> Goodbye, <!-- (user.name) --></p>
+
+<div>
+	<!-- (namespace profile) -->
+
+	<img> <!-- (attr 'src' avatar) -->
+
+	<p> <!-- (mini_bio) --> </p>
+
+	<a>
+		<!-- (on_click (set 'goodbye' true)) -->
+		<!-- (skip) -->
+		Logout
+
+		<p></p>
+		<span></span>
+	</a>
+
+	<p></p>
+
+</div>
+
 

@@ -5,3 +5,5 @@
    (that way we don't have to keep track of node passing overhead)
 
 - partial application, eg. view.def('add', 1, function(n) { return n + 1})
+
+- add an explicit "def_lazy" that passes in un-evaluated params. def by default will instead evaluate eagerly

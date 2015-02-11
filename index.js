@@ -13,6 +13,7 @@ var app = module.exports = { _bindings: {}}
 
 app.view = function(x) {
 	var self = this
+	if(typeof x !== 'string') return x
 	if(x instanceof Array) return iter.map(x, function(key) { self.view(key) })
 	if(arguments.length === 0) return self
 	return evaluate(x, self)
@@ -21,13 +22,11 @@ app.view = function(x) {
 app.def = function() {
 	var self = this
 	// Set a key to a value
-	if(arguments.length === 2)
-		var obj = unflatten_keys(arguments[0], arguments[1])
-	else
-		var obj = arguments[0]
+	if(arguments.length === 2) var obj = unflatten_keys(arguments[0], arguments[1])
+	else var obj = arguments[0]
 
 	for(var key in obj) {
-		if(typeof obj[key] === 'object' && typeof self[key] === 'object') {
+		if(obj[key] && obj[key].constructor === Object && self[key] && self[key].constructor === Object) {
 			if(self.hasOwnProperty(key))
 				copy.deep(obj[key], self[key])
 			else // Make a complete copy so we do not affect objects in parents and siblings
@@ -45,7 +44,14 @@ app.def = function() {
 	return self
 }
 
-app.render = function(node, scope) {
+app.def_lazy = function() {
+	var self = this
+	// Set a key to a value
+	if(arguments.length === 2) var obj = unflatten_keys(arguments[0], arguments[1])
+	else var obj = arguments[0]
+}
+
+app.render = function(node) {
 	var self = this
 	each_node(node, function(n) {
 		var cont = true
@@ -64,10 +70,11 @@ app.render = function(node, scope) {
 }
 
 app.eval_comment = function(comment) {
-	var self = this, prev_node = prev_open_tag(comment)
-	self.node = prev_node; self.comment = comment
+	var self = this
+	self.node = prev_open_tag(comment)
+	self.comment = comment
 	var result = evaluate(comment.textContent, self)
-	if(result === undefined || result === null || !prev_node || !comment.parentNode || result.skip)
+	if(result === undefined || result === null || result === NaN || !self.node || !comment.parentNode || result.skip)
 		return result
 	var interp = comment.nextSibling
 	if(!interp || interp.className !== 'deja-put') {
@@ -85,23 +92,6 @@ app.child = function() {
 	child_view._bindings = {}
 	child_view.parent = this
 	return child_view
-}
-
-app.incr = function(key) {
-	this.def(key, Number(this.view(key)) + 1)
-	return this
-}
-
-app.decr = function(key) {
-	this.def(key, this.view(key) - 1)
-	return this
-}
-
-app.toggle = function(key, value) {
-	var existing = this.view(key)
-	if(existing === value) this.def(key, null)
-	else this.def(key, value)
-	return this
 }
 
 app.push = function(key, val) {
@@ -150,9 +140,9 @@ app.def('repeat', function(arr) {
 	} else while(wrapper.firstChild) wrapper.removeChild(wrapper.firstChild)
 
 	iter.each(arr, function(x, i) {
-		var cloned = self.node.cloneNode(true),
-			child_view = self.child().def('each', x).render(cloned)
+		var cloned = self.node.cloneNode(true)
 		cloned.style.display = ''
+		self.child().def(x).render(cloned)
 		wrapper.appendChild(cloned)
 	})
 
@@ -244,12 +234,12 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 		app.def('on_' + event, function(expr) {
 			if(!this.node) return
 			var self = this, node = self.node, existing = node['on' + event]
-				node['on' + event] = function(ev) {
-					ev.preventDefault()
-					if(typeof existing === 'function') existing(ev)
-					self.node = node
-					self.view(expr)
-				}
+			node['on' + event] = function(ev) {
+				ev.preventDefault()
+				if(typeof existing === 'function') existing(ev)
+				self.node = node
+				self.view(expr)
+			}
 		})
 })
 
@@ -300,7 +290,13 @@ app.def('redirect', function(url) { window.location.href = this.view(url) })
 app.def('stringify', function(obj) { return JSON.stringify(this.view(obj)) })
 app.def('form_data', function() { return new FormData(this.node) })
 
-app.def('toggle', function(key, val) { this.toggle(this.view(key), this.view(val)) })
+app.def('toggle', function(key, val) {
+	key = this.view(key)
+	val = this.view(val)
+	var existing = this.view(key)
+	if(existing === val) this.def(key, null)
+	else this.def(key, val)
+})
 
 app.def('css', function(style_rule, val) {
 	style_rule = this.view(style_rule)

@@ -172,19 +172,19 @@ app.def('-', function() {
 	})
 })
 
-app.def('*', function() {
+app.def('mul', function() {
 	var self = this
 	return iter.fold(arguments, 0, function(product, term) {
 		return product * self.view(term)
 	})
 })
 
-app.def('/', function(x,y) {
+app.def('div', function(x,y) {
 	var self = this
 	return self.view(x)/self.view(y)
 })
 
-app.def('++', function(key) {
+app.def('incr', function(key) {
 	key = this.view(key)
 	var val = Number(this.view(key))
 	if(val === undefined) return
@@ -192,7 +192,7 @@ app.def('++', function(key) {
 	return val + 1
 })
 
-app.def('--', function(key) {
+app.def('decr', function(key) {
 	key = this.view(key)
 	var val = Number(this.view(key))
 	if(val === undefined) return

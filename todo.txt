@@ -1,35 +1,7 @@
-data sharing/inheritance:
-	- just use one single giant state object
-	- a single data object and bindings object
-	- just namespace stuff
+- Improve Exceptions
+  - Print comment node on each exception (linked automatically in chrome to the elements view)
 
-var app = require("deja-view")
-app.def('profile', {avatar: 'x.jpg', mini_bio: 'x y z'})
-app.def('user', {name: 'x'})
+- Set node on the view ('this') for each def function
+   (that way we don't have to keep track of node passing overhead)
 
-app.def('wizard.')
-
-<p><!-- (hide_if goodbye) --> Welcome, <!-- (user.name) --></p>
-<p><!-- (show_if goodbye) --> Goodbye, <!-- (user.name) --></p>
-
-<div>
-	<!-- (namespace profile) -->
-
-	<img> <!-- (attr 'src' avatar) -->
-
-	<p> <!-- (mini_bio) --> </p>
-
-	<a>
-		<!-- (on_click (set 'goodbye' true)) -->
-		<!-- (skip) -->
-		Logout
-
-		<p></p>
-		<span></span>
-	</a>
-
-	<p></p>
-
-</div>
-
-
+- partial application, eg. view.def('add', 1, function(n) { return n + 1})

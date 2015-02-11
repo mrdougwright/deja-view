@@ -96,6 +96,14 @@ app.child = function() {
 
 // Default view helpers
 
+app.def('concat', function(arr1_key, arr2) {
+	arr1_key = this.view(arr1_key)
+	arr2 = this.view(arr2)
+	var arr1 = this.view(arr1_key)
+	arr1 = arr1.concat(arr2)
+	this.def(arr1_key, arr1)
+})
+
 app.def('push', function(val, arr_key) {
 	val = this.view(val)
 	arr_key = this.view(arr_key)

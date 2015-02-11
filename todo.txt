@@ -1,3 +1,6 @@
+- No need to re-render children!
+- def by default is eager and def_lazy is lazy
+
 - Improve Exceptions
   - Print comment node on each exception (linked automatically in chrome to the elements view)
 

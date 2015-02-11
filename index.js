@@ -94,23 +94,23 @@ app.child = function() {
 	return child_view
 }
 
-app.push = function(key, val) {
-	this.def(key, this.view(key).concat([val]))
-	return this
-}
-
-app.pop = function(key) {
-	var arr = this.view(key), val = arr.pop()
-	this.def(key, arr)
-	return val
-}
-
-app.concat = function(key, arr) {
-	this.def(key, this.view(key).concat(arr))
-	return this
-}
-
 // Default view helpers
+
+app.def('push', function(val, arr_key) {
+	val = this.view(val)
+	arr_key = this.view(arr_key)
+	var arr = this.view(arr_key)
+	if(!arr.length) arr = []
+	arr.push(val)
+	this.def(arr_key, arr)
+})
+
+app.def('pop', function(arr_key) {
+	arr_key = this.view(arr_key)
+	var arr = this.view(arr_key)
+	arr.pop()
+	this.def(arr_key, arr)
+})
 
 app.def('set', function(key, val) {
 	this.def(this.view(key), this.view(val))
@@ -280,8 +280,6 @@ app.def('index', function(i, arr) {return this.view(arr)[this.view(i)]})
 app.def('attr', function(key, val) { this.node.setAttribute(this.view(key), this.view(val)) })
 app.def('href', function(url) { this.node.setAttribute('href', this.view(url)) })
 app.def('src', function(url) { this.node.setAttribute('src', this.view(url)) })
-app.def('push', function(val, arrKey) { this.push(this.view(arrKey), this.view(val)) })
-app.def('pop', function(arrKey) { this.pop(this.view(arrKey)) })
 app.def('log', function(expr) { console.log(this.view(expr)) })
 app.def('get_value', function() { return this.node.value })
 app.def('set_value', function(val) { this.node.value = this.view(val) })
@@ -366,7 +364,9 @@ app.def('all', function() {
 })
 
 app.def('any', function() {
-	return compare(function(x,y) {return x || y}, arguments, this)
+	for(var i = 0; i < arguments.length; ++i) {
+		if(this.view(arguments[i])) return this.view(arguments[i])
+	} return false
 })
 
 app.def('not',  function(val) {return !this.view(val)})

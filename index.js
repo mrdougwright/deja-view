@@ -347,7 +347,7 @@ function compare(fn, args, view) {
 	} return true
 }
 
-app.def('==', function() {
+app.def('eq', function() {
 	return compare(function(x, y) { return x == y }, arguments, this)
 })
 

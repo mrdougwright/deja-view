@@ -38,7 +38,9 @@ app.def = function() {
 
 	iter.each(flatten_keys(obj), function(key) {
 		if(self._bindings[key]) {
-			iter.each(self._bindings[key], function(n) { self.eval_comment(n) })
+			iter.each(self._bindings[key], function(n) {
+					self.eval_comment(n)
+			})
 		}
 	})
 	return self
@@ -59,7 +61,7 @@ app.render = function(node) {
 			var keys = get_keys(n.textContent)
 			iter.each(keys, function(k) {
 				self._bindings[k] = self._bindings[k] || []
-				self._bindings[k].push(n)
+				if(self._bindings[k].indexOf(n) === -1) self._bindings[k].push(n)
 			})
 			var result = self.eval_comment(n)
 			cont = !result || !result.skip
@@ -68,6 +70,8 @@ app.render = function(node) {
 	})
 	return self
 }
+
+app.clear_bindings = function() {this._bindings = {}; return this}
 
 app.eval_comment = function(comment) {
 	var self = this
@@ -89,7 +93,7 @@ app.eval_comment = function(comment) {
 // Inherit a view & namespace the parent! TODO
 app.child = function() {
 	var child_view = Object.create(this)
-	child_view._bindings = {}
+	child_view._bindings = Object.create(this._bindings, {})
 	child_view.parent = this
 	return child_view
 }
@@ -138,7 +142,6 @@ app.def('repeat', function(arr) {
 	var self = this, arr = self.view(arr)
 	self.node.style.display = 'none'
 	self.node.removeChild(self.comment)
-	self.def("each", arr)
 
 	var wrapper = self.node.nextSibling
 	if(!wrapper || wrapper.className !== 'deja-repeat') {
@@ -150,7 +153,7 @@ app.def('repeat', function(arr) {
 	iter.each(arr, function(x, i) {
 		var cloned = self.node.cloneNode(true)
 		cloned.style.display = ''
-		self.child().def(x).render(cloned)
+		var child = self.child().def('each', x).def(x).clear_bindings().render(cloned)
 		wrapper.appendChild(cloned)
 	})
 
@@ -244,7 +247,7 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 			var self = this, node = self.node, existing = node['on' + event]
 			node['on' + event] = function(ev) {
 				ev.preventDefault()
-				if(typeof existing === 'function') existing(ev)
+				// if(typeof existing === 'function') existing(ev)
 				self.node = node
 				self.view(expr)
 			}

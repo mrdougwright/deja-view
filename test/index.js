@@ -8,15 +8,15 @@ var app = window.app = require('../'),
 describe('parse', function() {
 
 	it('denests parens', function() {
-		assert.deepEqual(parse('(1)'), [{num: 1}])
+		assert.deepEqual(parse('(1)'), '1')
 	})
 
 	it('turns a num into a demarcated number', function() {
-		assert.deepEqual(parse('1'), [{num: 1}])
+		assert.deepEqual(parse('1'), [{val: 1}])
 })
 
 	it('turns a str into a demarcated string', function() {
-		assert.deepEqual(parse('"what\'s up there bro?"'), [{str: "what's up there bro?"}])
+		assert.deepEqual(parse('"what\'s up there bro?"'), [{val: "what's up there bro?"}])
 	})
 
 	it('turns a keyword into a demarcated key', function() {
@@ -33,13 +33,13 @@ describe('parse', function() {
 
 	it('turns an expression into an array of atoms and sub-expressions', function() {
 		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "sup brah"',
-			parsed = [{key: 'a'}, '(b (c z))', '(d "hello!")', '433.43', "\"sup brah\""]
+			parsed = ['a', 'b (c z)', 'd "hello!"', '433.43', "\"sup brah\""]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 
 	it('correctly parses two strings in a row', function() {
 		var sexpr = "'hey' 'there'",
-			parsed = [{str: "hey"}, "'there'"]
+			parsed = ["'hey'", "'there'"]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 })
@@ -101,25 +101,25 @@ describe('.view', function() {
 	})
 
 	it('returns the return val of a function taking atoms as params', function() {
-		assert.equal(app.view('+ 1 2'), 3)
+		assert.equal(app.view('add 1 2'), 3)
 	})
 
 	it('returns the return val of various nested functions', function() {
-		assert.equal(app.view('+   (+   1 1)       (+ 2  2)'), 6)
+		assert.equal(app.view('add   (add   1 1)       (add 2  2)'), 6)
 	})
 
 	it('more nested lol', function() {
-		assert.equal(app.view('+ (+ 1 1) (+ (+ 3 4) (+ 2 2))'), 13)
+		assert.equal(app.view('add (add 1 1) (add (add 3 4) (add 2 2))'), 13)
 	})
 
-	it('evaluates keys that dont exist as empty string', function() {
-		assert.equal(app.view('(watskfasdasdfasd)'), '')
+	it('evaluates keys that dont exist as undefined', function() {
+		assert.equal(app.view('(watskfasdasdfasd)'), undefined)
 	})
 
-	xit('allows for the definition of partial application of functions', function() {
+	// TODO
+	xit('partial application', function() {
 		app.def('partial', 'hi', function(name) { return 'hi ' + this.view(name) })
-		// TODO
-		// assert.equal(view('partial 420'), 'hi 420')
+		assert.equal(view('partial 420'), 'hi 420')
 	})
 
 	it('allows for the definition of nested dotted keys', function() {
@@ -147,21 +147,21 @@ describe('.render', function() {
 
 	it('interpolates a fn', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (+ 1 2) "))
+		div.appendChild(document.createComment(" (add 1 2) "))
 		app.render(div)
 		assert.equal(div.textContent, '3')
 	})
 
 	it('interpolates a nested fn', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (cat 'answer is ' (+ 1 2)) "))
+		div.appendChild(document.createComment(" (cat 'answer is ' (add 1 2)) "))
 		app.render(div)
 		assert.equal(div.textContent, 'answer is 3')
 	})
 
 	it('interpolates key values', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (+ x y) "))
+		div.appendChild(document.createComment(" (add x y) "))
 		app.def({x: 2, y: 3})
 		app.render(div)
 		assert.equal(div.textContent, '5')
@@ -243,7 +243,7 @@ describe('.child', function() {
 	it('child view can set data from the dom for the parent view', function() {
 		var div = document.createElement('div'),
 			child = app.child()
-		div.appendChild(document.createComment(" (set 'parent.x' 99) "))
+		div.appendChild(document.createComment(" (def 'parent.x' 99) "))
 		app.def('x', 420)
 		child.render(div)
 		assert.equal(app.view('x'), 99)
@@ -266,7 +266,7 @@ describe('data binding/updating', function() {
 
 	it('updates the interpolation of a function return val when data in the function params was changed', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (+ (+ (+ x x) 1) 1)"))
+		div.appendChild(document.createComment(" (add (add (add x x) 1) 1)"))
 		app.def('x', 1)
 		app.render(div)
 		assert.equal(div.textContent, '4')
@@ -285,13 +285,8 @@ describe('repeat', function() {
 	})
 
 	it('repeats an evaluated array', function() {
-		app.def('tail', function(arr) {
-			arr = this.view(arr)
-			return arr.slice(1)
-		})
 		var el = domify("<div><div><!-- (repeat (tail xs))) --><!-- (each) --></div></div>")
-		app.def('xs', [1,2,3])
-		app.render(el)
+		app.def('xs', [1,2,3]).render(el)
 		assert.equal(el.textContent, '23')
 	})
 
@@ -313,5 +308,13 @@ describe('repeat', function() {
 
 		app.def('xs', [10,11,12])
 		assert.equal(el.textContent, '101112789')
+	})
+})
+
+describe('set_at', function() {
+	it('sets individual elements in an array', function() {
+		app.def('xs', [{name: 'Finn'}, {name: 'PB'}])
+		app.set_at('xs', 0, {name: 'Jake'})
+		assert.deepEqual(app.xs, [{name: 'Jake'}, {name: 'PB'}])
 	})
 })

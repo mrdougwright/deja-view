@@ -37,21 +37,18 @@ app.def = function() {
 	}
 
 	iter.each(flatten_keys(obj), function(key) {
-		if(self._bindings[key]) {
-			iter.each(self._bindings[key], function(n) {
-					self.eval_comment(n)
-			})
-		}
+		if(self._bindings[key])
+			iter.each(self._bindings[key], function(n) { self.eval_comment(n) })
 	})
 	return self
 }
 
-app.def_lazy = function() {
-	var self = this
-	// Set a key to a value
-	if(arguments.length === 2) var obj = unflatten_keys(arguments[0], arguments[1])
-	else var obj = arguments[0]
-}
+app.def('set_at', function(arr_key, index, val) {
+	copy.deep(val, this[arr_key][index])
+	this.def(arr_key, this[arr_key])
+})
+
+app.def_lazy = function(key,fn) { this.def(key, {_lazy: fn}) }
 
 app.render = function(node) {
 	var self = this
@@ -78,7 +75,7 @@ app.eval_comment = function(comment) {
 	self.node = prev_open_tag(comment)
 	self.comment = comment
 	var result = evaluate(comment.textContent, self)
-	if(result === undefined || result === null || result === NaN || !self.node || !comment.parentNode || result.skip)
+	if(result === undefined || result === null || result === NaN || result == self || !self.node || !comment.parentNode || result.skip)
 		return result
 	var interp = comment.nextSibling
 	if(!interp || interp.className !== 'deja-put') {
@@ -100,17 +97,17 @@ app.child = function() {
 
 // Default view helpers
 
+app.def('noop', function() {})
+app.def('id', function(x) {return x})
+
+// Array funcs
+
 app.def('concat', function(arr1_key, arr2) {
-	arr1_key = this.view(arr1_key)
-	arr2 = this.view(arr2)
-	var arr1 = this.view(arr1_key)
-	arr1 = arr1.concat(arr2)
-	this.def(arr1_key, arr1)
+	this.def(arr1_key, this[arr1_key].concat(arr2))
+	return this[arr1_key]
 })
 
 app.def('push', function(val, arr_key) {
-	val = this.view(val)
-	arr_key = this.view(arr_key)
 	var arr = this.view(arr_key)
 	if(!arr.length) arr = []
 	arr.push(val)
@@ -118,28 +115,23 @@ app.def('push', function(val, arr_key) {
 })
 
 app.def('pop', function(arr_key) {
-	arr_key = this.view(arr_key)
-	var arr = this.view(arr_key)
-	arr.pop()
+	var arr = this.view(arr_key), val = arr.pop()
 	this.def(arr_key, arr)
-})
-
-app.def('set', function(key, val) {
-	this.def(this.view(key), this.view(val))
+	return val
 })
 
 app.def('show_if', function(pred) {
-	if(this.view(pred)) this.node.style.display = ''
+	if(pred) this.node.style.display = ''
 	else this.node.style.display = 'none'
 })
 
 app.def('hide_if', function(pred) {
-	if(this.view(pred)) this.node.style.display = 'none'
+	if(pred) this.node.style.display = 'none'
 	else this.node.style.display = ''
 })
 
 app.def('repeat', function(arr) {
-	var self = this, arr = self.view(arr)
+	var self = this
 	self.node.style.display = 'none'
 	self.node.removeChild(self.comment)
 
@@ -161,88 +153,47 @@ app.def('repeat', function(arr) {
 	return {skip: true}
 })
 
-app.def('+', function() {
-	var self = this
-	return iter.fold(arguments, 0, function(sum, term) {
-		return sum + self.view(term)
-	})
-})
-
-app.def('-', function() {
-	var self = this
-	return iter.fold(arguments, 0, function(diff, term) {
-		return diff - self.view(term)
-	})
-})
-
-app.def('mul', function() {
-	var self = this
-	return iter.fold(arguments, 0, function(product, term) {
-		return product * self.view(term)
-	})
-})
-
-app.def('div', function(x,y) {
-	var self = this
-	return self.view(x)/self.view(y)
-})
+app.def('add', function() { return sum(arguments) })
+app.def('sub', function() { return diff(arguments) })
+app.def('mul', function() { return prod(arguments) })
+app.def('div', function(x,y) { return x/y })
 
 app.def('incr', function(key) {
-	key = this.view(key)
-	var val = Number(this.view(key))
+	var val = Number(this[key])
 	if(val === undefined) return
 	this.def(key, val + 1)
-	return val + 1
+	return this[key]
 })
 
 app.def('decr', function(key) {
-	key = this.view(key)
-	var val = Number(this.view(key))
+	var val = Number(this[key])
 	if(val === undefined) return
 	this.def(key, val - 1)
 	return val - 1
 })
 
-function add_class(node, class_name) {
-	if(node.className.indexOf(class_name) === -1)
-		node.className += ' ' + class_name
-}
-
-function remove_class(node, class_name) {
-	node.className = node.className.replace(class_name, '')
-}
-
-app.def('add_class', function(class_name) {
-	add_class(this.node, this.view(class_name))
-})
-
-app.def('remove_class', function(class_name) {
-	remove_class(this.node, this.view(class_name))
-})
+app.def('add_class', function(class_name) { add_class(this.node, class_name) })
+app.def('remove_class', function(class_name) { remove_class(this.node, class_name) })
 
 app.def('toggle_class', function(class_name) {
-	class_name = this.view(class_name)
-	if(this.node.className.indexOf(class_name))
-		remove_class(this.node, class_name)
-	else
-		add_class(this.node, class_name)
+	if(this.node.className.indexOf(class_name)) remove_class(this.node, class_name)
+	else add_class(this.node, class_name)
 })
 
 app.def('class_if', function(pred, class_name) {
-	if(this.view(pred)) add_class(this.node, this.view(class_name))
-	else remove_class(this.node, this.view(class_name))
+	if(pred) add_class(this.node, class_name)
+	else remove_class(this.node, class_name)
 })
 
 app.def('cat', function() {
-	var self = this
-	return iter.fold(arguments, '', function(str, term) { return str += self.view(term) })
+	return iter.fold(arguments, '', function(str, term) { return str += term })
 })
 
 iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 	'mouseenter', 'mouseleave', 'scroll', 'blur', 'focus', 'input',
 	'submit', 'keydown', 'keypress', 'keyup'],
 	function(event) {
-		app.def('on_' + event, function(expr) {
+		app.def_lazy('on_' + event, function(expr) {
 			if(!this.node) return
 			var self = this, node = self.node, existing = node['on' + event]
 			node['on' + event] = function(ev) {
@@ -254,69 +205,81 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 		})
 })
 
-app.def('any_event', function() {
+app.def_lazy('any_event', function() {
 	var expr = arguments[arguments.length - 1]
-	for(var i = 0; i < arguments.length - 1; ++i) {
+	for(var i = 0; i < arguments.length - 1; ++i)
 		this.view(arguments[i] + ' (' + expr + ')')
-	}
 })
 
-app.def('do', function() {
-	var self = this
-	iter.each(arguments, function(arg) { self.view(arg) })
-})
-
-app.def('empty',  function(arr) {
-	arr = this.view(arr)
-	return !arr || !arr.length
-})
-
-app.def('length', function(arr) {
-	arr = this.view(arr)
-	return (arr ? arr.length : 0)
-})
-
-app.def('tail', function(arr) {
-	return this.view(arr).slice(1)
-})
-
-app.def('init', function(arr) {
-	arr = this.view(arr)
-	return arr.slice(0, arr.length-1)
-})
-
-app.def('head', function(arr) {return this.view(arr)[0]})
-app.def('index', function(i, arr) {return this.view(arr)[this.view(i)]})
-
-app.def('attr', function(key, val) { this.node.setAttribute(this.view(key), this.view(val)) })
-app.def('href', function(url) { this.node.setAttribute('href', this.view(url)) })
-app.def('src', function(url) { this.node.setAttribute('src', this.view(url)) })
-app.def('log', function(expr) { console.log(this.view(expr)) })
+app.def('empty',  function(arr) { return !arr || !arr.length })
+app.def('length', function(arr) { return (arr ? arr.length : 0) })
+app.def('tail', function(arr) { return arr.slice(1) })
+app.def('init', function(arr) { return arr.slice(0, arr.length-1) })
+app.def('head', function(arr) {return arr[0]})
+app.def('attr', function(key, val) { this.node.setAttribute(key, val) })
+app.def('log', function(msg) { console.log(msg) })
 app.def('get_value', function() { return this.node.value })
-app.def('set_value', function(val) { this.node.value = this.view(val) })
+app.def('set_value', function(val) { this.node.value = val })
 app.def('reload', function() { window.location.reload() })
-app.def('redirect', function(url) { window.location.href = this.view(url) })
-app.def('stringify', function(obj) { return JSON.stringify(this.view(obj)) })
+app.def('redirect', function(url) { window.location.href = url })
+app.def('stringify', function(obj) { return JSON.stringify(obj) })
 app.def('form_data', function() { return new FormData(this.node) })
 
 app.def('toggle', function(key, val) {
-	key = this.view(key)
-	val = this.view(val)
 	var existing = this.view(key)
 	if(existing === val) this.def(key, null)
 	else this.def(key, val)
 })
 
-app.def('css', function(style_rule, val) {
-	style_rule = this.view(style_rule)
-	val = this.view(val)
-	this.node.style[style_rule] = val
-})
+app.def('css', function(style_rule, val) { this.node.style[style_rule] = val })
 
-app.def('if', function(predicate, thenExpr, elseExpr) {
+app.def_lazy('if', function(predicate, thenExpr, elseExpr) {
 	if(this.view(predicate)) return this.view(thenExpr)
 	else if(elseExpr) return this.view(elseExpr)
 })
+
+app.def_lazy('delay', function(ms, expr) {
+	var self = this
+	delay(self.view(ms), function() {self.view(expr)})
+})
+
+app.def('select_option', function(val) {
+	var option = this.node.querySelector("option[value='" + val + "']")
+	if(option) option.setAttribute('selected', 'selected')
+})
+
+app.def('not',  function(val) {return !val})
+app.def('eq', function() { return compare(function(x, y) { return x == y }, arguments, this) })
+app.def('<', function() { return compare(function(x, y) { return x < y }, arguments, this) })
+app.def('>', function() { return compare(function(x, y) { return x > y }, arguments, this) })
+app.def('<=', function() { return compare(function(x, y) { return x <= y }, arguments, this) })
+app.def('>=', function() { return compare(function(x, y) { return x >= y }, arguments, this) })
+app.def('all', function() { return compare(function(x,y) {return x && y}, arguments, this) })
+
+app.def('any', function() {
+	for(var i = 0; i < arguments.length; ++i) if(arguments[i]) return arguments[i]
+	return false
+})
+
+app.render(document.body)
+
+// Utilities
+
+function sum(ns) {return iter.fold(ns, 0, function(sum, n) {return sum+n})}
+function diff(ns) {return iter.fold(ns, 0, function(diff, n) {return diff-n})}
+function prod(ns) {return iter.fold(ns, 0, function(prod, n) {return prod*n})}
+function add_class(node, class_name) { if(node.className.indexOf(class_name) === -1) node.className += ' ' + class_name }
+function remove_class(node, class_name) { node.className = node.className.replace(class_name, '') }
+
+// N-ary general purpose comparator func
+function compare(fn, args, view) {
+	var last = view.view(args[0])
+	for(var i = 1; i < args.length; ++i) {
+		if(!fn(last, view.view(args[i]))) return false
+		last = view.view(args[i])
+	}
+	return true
+}
 
 var delay = (function() {
 	var timer = 0
@@ -325,61 +288,3 @@ var delay = (function() {
 		timer = setTimeout(callback, ms)
 	}
 })()
-
-app.def('delay', function(ms, expr) {
-	var self = this
-	delay(self.view(ms), function() {self.view(expr)})
-})
-
-app.def('select_option', function(val) {
-	val = this.view(val)
-	var option = this.node.querySelector("option[value='" + val + "']")
-	if(option) option.setAttribute('selected', 'selected')
-})
-
-app.def('style', function(style_rule, val) {
-	this.node.style[this.view(style_rule)] = this.view(val)
-})
-
-// N-ary general purpose comparator func
-function compare(fn, args, view) {
-	var last = view.view(args[0])
-	for(var i = 1; i < args.length; ++i) {
-		if(!fn(last, view.view(args[i]))) return false
-		last = view.view(args[i])
-	} return true
-}
-
-app.def('eq', function() {
-	return compare(function(x, y) { return x == y }, arguments, this)
-})
-
-app.def('<', function() {
-	return compare(function(x, y) { return x < y }, arguments, this)
-})
-
-app.def('>', function() {
-	return compare(function(x, y) { return x > y }, arguments, this)
-})
-
-app.def('<=', function() {
-	return compare(function(x, y) { return x <= y }, arguments, this)
-})
-
-app.def('>=', function() {
-	return compare(function(x, y) { return x >= y }, arguments, this)
-})
-
-app.def('all', function() {
-	return compare(function(x,y) {return x && y}, arguments, this)
-})
-
-app.def('any', function() {
-	for(var i = 0; i < arguments.length; ++i) {
-		if(this.view(arguments[i])) return this.view(arguments[i])
-	} return false
-})
-
-app.def('not',  function(val) {return !this.view(val)})
-
-app.render(document.body)

@@ -12,11 +12,9 @@ var each_node = require('./lib/each_node'),
 var app = module.exports = { _bindings: {}}
 
 app.view = function(x) {
-	var self = this
-	if(typeof x !== 'string') return x
-	if(x instanceof Array) return iter.map(x, function(key) { self.view(key) })
-	if(arguments.length === 0) return self
-	return evaluate(x, self)
+	if(arguments.length === 0) return this
+	if(typeof x === 'string') return evaluate(x, this)
+	return x
 }
 
 app.def = function() {
@@ -43,9 +41,14 @@ app.def = function() {
 	return self
 }
 
+app.def('set', function(key, val) {
+	this.def(key, val)
+})
+
 app.def('set_at', function(arr_key, index, val) {
-	copy.deep(val, this[arr_key][index])
-	this.def(arr_key, this[arr_key])
+	var arr = this.view(arr_key)
+	copy.deep(val, arr[index])
+	this.def(arr_key, arr)
 })
 
 app.def_lazy = function(key,fn) { this.def(key, {_lazy: fn}) }
@@ -61,7 +64,9 @@ app.render = function(node) {
 				if(self._bindings[k].indexOf(n) === -1) self._bindings[k].push(n)
 			})
 			var result = self.eval_comment(n)
-			cont = !result || !result.skip
+			if(result && result.skip) {
+				cont = false
+			}
 		}
 		return cont
 	})
@@ -71,7 +76,7 @@ app.render = function(node) {
 app.clear_bindings = function() {this._bindings = {}; return this}
 
 app.eval_comment = function(comment) {
-	var self = this
+	var self = this, prev_node = self.node
 	self.node = prev_open_tag(comment)
 	self.comment = comment
 	var result = evaluate(comment.textContent, self)
@@ -103,8 +108,9 @@ app.def('id', function(x) {return x})
 // Array funcs
 
 app.def('concat', function(arr1_key, arr2) {
-	this.def(arr1_key, this[arr1_key].concat(arr2))
-	return this[arr1_key]
+	var arr1 = this.view(arr1_key)
+	this.def(arr1_key, arr1.concat(arr2))
+	return arr1
 })
 
 app.def('push', function(val, arr_key) {
@@ -145,7 +151,7 @@ app.def('repeat', function(arr) {
 	iter.each(arr, function(x, i) {
 		var cloned = self.node.cloneNode(true)
 		cloned.style.display = ''
-		var child = self.child().def('each', x).def(x).clear_bindings().render(cloned)
+		var child = self.child().clear_bindings().def('each', x).def(x).render(cloned)
 		wrapper.appendChild(cloned)
 	})
 
@@ -159,14 +165,14 @@ app.def('mul', function() { return prod(arguments) })
 app.def('div', function(x,y) { return x/y })
 
 app.def('incr', function(key) {
-	var val = Number(this[key])
+	var val = Number(this.view(key))
 	if(val === undefined) return
 	this.def(key, val + 1)
-	return this[key]
+	return this.view(key)
 })
 
 app.def('decr', function(key) {
-	var val = Number(this[key])
+	var val = Number(this.view(key))
 	if(val === undefined) return
 	this.def(key, val - 1)
 	return val - 1
@@ -197,6 +203,7 @@ iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
 			if(!this.node) return
 			var self = this, node = self.node, existing = node['on' + event]
 			node['on' + event] = function(ev) {
+				console.log('event!')
 				ev.preventDefault()
 				// if(typeof existing === 'function') existing(ev)
 				self.node = node
@@ -217,13 +224,14 @@ app.def('tail', function(arr) { return arr.slice(1) })
 app.def('init', function(arr) { return arr.slice(0, arr.length-1) })
 app.def('head', function(arr) {return arr[0]})
 app.def('attr', function(key, val) { this.node.setAttribute(key, val) })
-app.def('log', function(msg) { console.log(msg) })
 app.def('get_value', function() { return this.node.value })
 app.def('set_value', function(val) { this.node.value = val })
 app.def('reload', function() { window.location.reload() })
 app.def('redirect', function(url) { window.location.href = url })
 app.def('stringify', function(obj) { return JSON.stringify(obj) })
 app.def('form_data', function() { return new FormData(this.node) })
+
+app.def('log', function() { console.log.apply(console, arguments) })
 
 app.def('toggle', function(key, val) {
 	var existing = this.view(key)
@@ -267,7 +275,7 @@ app.render(document.body)
 
 function sum(ns) {return iter.fold(ns, 0, function(sum, n) {return sum+n})}
 function diff(ns) {return iter.fold(ns, 0, function(diff, n) {return diff-n})}
-function prod(ns) {return iter.fold(ns, 0, function(prod, n) {return prod*n})}
+function prod(ns) {return iter.fold(ns, 1, function(prod, n) {return prod*n})}
 function add_class(node, class_name) { if(node.className.indexOf(class_name) === -1) node.className += ' ' + class_name }
 function remove_class(node, class_name) { node.className = node.className.replace(class_name, '') }
 

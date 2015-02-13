@@ -44,6 +44,19 @@ describe('parse', function() {
 	})
 })
 
+describe('.def_lazy', function() {
+
+	it('does stuff', function() {
+		app.def_lazy('immediate', function(x) { this.view(x) })
+		app.def_lazy('noop', function(x) {x})
+		var div = document.createElement("div")
+		div.appendChild(document.createComment("(immediate (set 'hey' 'heeey'))"))
+		div.appendChild(document.createComment("(noop (set 'hey' 'wuwhut'))"))
+		app.render(div)
+		assert.equal(app.hey, 'heeey')
+	})
+})
+
 describe('.def', function() {
 
 	it('sets a single val', function() {
@@ -72,6 +85,12 @@ describe('.def', function() {
 		app.def('x.y', 1)
 		app.def('x.z', 420)
 		assert.equal(app.x.y, 1)
+	})
+
+	it('can use the result of a 0-ary function in the args of another fn', function() {
+		app.def('hi', function(){return 'hi'})
+		app.view("set 'x' hi")
+		assert.equal(app.x, 'hi')
 	})
 })
 

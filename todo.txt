@@ -1,3 +1,4 @@
+- define 'i' for every element in a repeat loop
 - partial application, eg. view.def('add', 1, function(n) { return n + 1})
 
 - do a complex example in d3 and absorb any of its awesomeness

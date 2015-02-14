@@ -80,8 +80,8 @@ app.eval_comment = function(comment) {
 	self.node = prev_open_tag(comment)
 	self.comment = comment
 	var result = evaluate(comment.textContent, self)
-	if(result === undefined || result === null || result === NaN || result == self || !self.node || !comment.parentNode || result.skip)
-		return result
+	if(result === [] || result === undefined || result === null || result === NaN || result == self || !self.node || !comment.parentNode || result.skip)
+		return
 	var interp = comment.nextSibling
 	if(!interp || interp.className !== 'deja-put') {
 		interp = document.createElement('span')
@@ -102,7 +102,7 @@ app.child = function() {
 
 // Default view helpers
 
-app.def('noop', function() {})
+app.def('no_op', function() {})
 app.def('id', function(x) {return x})
 
 // Array funcs
@@ -151,7 +151,7 @@ app.def('repeat', function(arr) {
 	iter.each(arr, function(x, i) {
 		var cloned = self.node.cloneNode(true)
 		cloned.style.display = ''
-		var child = self.child().clear_bindings().def('each', x).def(x).render(cloned)
+		var child = self.child().clear_bindings().def('each', x).def(x).def(x).render(cloned)
 		wrapper.appendChild(cloned)
 	})
 
@@ -195,27 +195,19 @@ app.def('cat', function() {
 	return iter.fold(arguments, '', function(str, term) { return str += term })
 })
 
-iter.each(['change', 'click', 'dblclick', 'mousedown', 'mouseup',
-	'mouseenter', 'mouseleave', 'scroll', 'blur', 'focus', 'input',
-	'submit', 'keydown', 'keypress', 'keyup'],
-	function(event) {
-		app.def_lazy('on_' + event, function(expr) {
-			if(!this.node) return
-			var self = this, node = self.node, existing = node['on' + event]
-			node['on' + event] = function(ev) {
-				console.log('event!')
-				ev.preventDefault()
-				// if(typeof existing === 'function') existing(ev)
-				self.node = node
-				self.view(expr)
-			}
-		})
-})
+app.def_lazy('on', function(events) {
+	if(!this.node) return
+	var self = this, node = self.node, args = arguments
+	events = this.view(events)
+	if(!(events instanceof Array)) events = [events]
 
-app.def_lazy('any_event', function() {
-	var expr = arguments[arguments.length - 1]
-	for(var i = 0; i < arguments.length - 1; ++i)
-		this.view(arguments[i] + ' (' + expr + ')')
+	iter.each(events, function(ev) {
+		node['on' + ev] = function(e) {
+			e.preventDefault()
+			self.node = node
+			for(var i = 1; i < args.length; ++i) self.view(args[i])
+		}
+	})
 })
 
 app.def('empty',  function(arr) { return !arr || !arr.length })
@@ -230,7 +222,6 @@ app.def('reload', function() { window.location.reload() })
 app.def('redirect', function(url) { window.location.href = url })
 app.def('stringify', function(obj) { return JSON.stringify(obj) })
 app.def('form_data', function() { return new FormData(this.node) })
-
 app.def('log', function() { console.log.apply(console, arguments) })
 
 app.def('toggle', function(key, val) {
@@ -241,9 +232,9 @@ app.def('toggle', function(key, val) {
 
 app.def('css', function(style_rule, val) { this.node.style[style_rule] = val })
 
-app.def_lazy('if', function(predicate, thenExpr, elseExpr) {
-	if(this.view(predicate)) return this.view(thenExpr)
-	else if(elseExpr) return this.view(elseExpr)
+app.def_lazy('if', function(predicate, then_expr, else_expr) {
+	if(this.view(predicate)) return this.view(then_expr)
+	else return this.view(else_expr)
 })
 
 app.def_lazy('delay', function(ms, expr) {
@@ -262,7 +253,11 @@ app.def('<', function() { return compare(function(x, y) { return x < y }, argume
 app.def('>', function() { return compare(function(x, y) { return x > y }, arguments, this) })
 app.def('<=', function() { return compare(function(x, y) { return x <= y }, arguments, this) })
 app.def('>=', function() { return compare(function(x, y) { return x >= y }, arguments, this) })
-app.def('all', function() { return compare(function(x,y) {return x && y}, arguments, this) })
+
+app.def('all', function() {
+	for(var i = 0; i < arguments.length; ++i) if(!arguments[i]) return false
+	return arguments[arguments.length-1]
+})
 
 app.def('any', function() {
 	for(var i = 0; i < arguments.length; ++i) if(arguments[i]) return arguments[i]
@@ -280,14 +275,15 @@ function add_class(node, class_name) { if(node.className.indexOf(class_name) ===
 function remove_class(node, class_name) { node.className = node.className.replace(class_name, '') }
 
 // N-ary general purpose comparator func
-function compare(fn, args, view) {
-	var last = view.view(args[0])
+function compare(fn, args) {
+	var last = args[0]
 	for(var i = 1; i < args.length; ++i) {
-		if(!fn(last, view.view(args[i]))) return false
-		last = view.view(args[i])
-	}
-	return true
+		if(!fn(last, args[i])) return false
+		last = args[i]
+	} return true
 }
+
+window.compare = compare
 
 var delay = (function() {
 	var timer = 0

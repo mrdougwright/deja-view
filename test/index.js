@@ -337,3 +337,14 @@ describe('set_at', function() {
 		assert.deepEqual(app.xs, [{name: 'Jake'}, {name: 'PB'}])
 	})
 })
+
+describe("if", function() {
+
+	it('evals then_expr with predicate true', function() {
+		assert.equal(app.view("if true 'yup' 'nope'"), 'yup')
+	})
+
+	it('evals else_expr with predicate false', function() {
+		assert.equal(app.view("if false 'nope' 'yup'"), 'yup')
+	})
+})

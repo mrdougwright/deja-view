@@ -64,9 +64,7 @@ app.render = function(node) {
 				if(self._bindings[k].indexOf(n) === -1) self._bindings[k].push(n)
 			})
 			var result = self.eval_comment(n)
-			if(result && result.skip) {
-				cont = false
-			}
+			if(result && result.skip) cont = false
 		}
 		return cont
 	})
@@ -81,7 +79,7 @@ app.eval_comment = function(comment) {
 	self.comment = comment
 	var result = evaluate(comment.textContent, self)
 	if(result === [] || result === undefined || result === null || result === NaN || result == self || !self.node || !comment.parentNode || result.skip)
-		return
+		return result
 	var interp = comment.nextSibling
 	if(!interp || interp.className !== 'deja-put') {
 		interp = document.createElement('span')
@@ -151,7 +149,7 @@ app.def('repeat', function(arr) {
 	iter.each(arr, function(x, i) {
 		var cloned = self.node.cloneNode(true)
 		cloned.style.display = ''
-		var child = self.child().clear_bindings().def('each', x).def(x).def(x).render(cloned)
+		var child = self.child().clear_bindings().def('i', i).def('each', x).def(x).def(x).render(cloned)
 		wrapper.appendChild(cloned)
 	})
 

@@ -328,6 +328,14 @@ describe('repeat', function() {
 		app.def('xs', [10,11,12])
 		assert.equal(el.textContent, '101112789')
 	})
+
+	it('does not render into the template element', function() {
+		var el = domify("<div><div><!-- (repeat xs) --><!-- (each) --><!-- (wut) --></div></div>")
+		app.render(el)
+		app.def('xs', [1,2,3])
+		app.def('wut', 'dont show this')
+		assert.equal(el.textContent, '123')
+	})
 })
 
 describe('set_at', function() {

@@ -152,35 +152,35 @@ describe('.render', function() {
 
 	it('interpolates a num', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment("(12.32)"))
+		div.appendChild(document.createComment("= put 12.32"))
 		app.render(div)
 		assert.equal(div.textContent, '12.32')
 	})
 
 	it('interpolates a str', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" ('hello! world!') "))
+		div.appendChild(document.createComment("= put 'hello! world!' "))
 		app.render(div)
 		assert.equal(div.textContent, 'hello! world!')
 	})
 
 	it('interpolates a fn', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (add 1 2) "))
+		div.appendChild(document.createComment("= put add 1 2 "))
 		app.render(div)
 		assert.equal(div.textContent, '3')
 	})
 
 	it('interpolates a nested fn', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (cat 'answer is ' (add 1 2)) "))
+		div.appendChild(document.createComment("= put cat 'answer is ' (add 1 2) "))
 		app.render(div)
 		assert.equal(div.textContent, 'answer is 3')
 	})
 
 	it('interpolates key values', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (add x y) "))
+		div.appendChild(document.createComment("= put add x y "))
 		app.def({x: 2, y: 3})
 		app.render(div)
 		assert.equal(div.textContent, '5')
@@ -188,7 +188,7 @@ describe('.render', function() {
 
 	it('runs a function that can mess with the parent node', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (make-blue) "))
+		div.appendChild(document.createComment("= put make-blue "))
 		app.def('make-blue', function(node) { this.node.style.color = 'blue' })
 		app.render(div)
 		assert.equal(div.style.color, 'blue')
@@ -196,7 +196,7 @@ describe('.render', function() {
 
 	it('retrieves nested keys from view data', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (x.y.z) "))
+		div.appendChild(document.createComment("= put x.y.z "))
 		app.def({x: {y: {z: 1}}})
 		app.render(div)
 		assert.equal(div.textContent, '1')
@@ -204,7 +204,7 @@ describe('.render', function() {
 
 	it('retrieves unnested but dotted keys from view data', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (x.y.z) "))
+		div.appendChild(document.createComment("= put x.y.z "))
 		app.def("x.y.z", 420)
 		app.render(div)
 		assert.equal(div.textContent, '420')
@@ -212,7 +212,7 @@ describe('.render', function() {
 
 	it('sets nested keys exclusively from each other without overriding', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (x.y) "))
+		div.appendChild(document.createComment("= put x.y "))
 		app.def('x.y', 1)
 		app.def('x.z', 44)
 		app.render(div)
@@ -262,7 +262,7 @@ describe('.child', function() {
 	it('child view can set data from the dom for the parent view', function() {
 		var div = document.createElement('div'),
 			child = app.child()
-		div.appendChild(document.createComment(" (def 'parent.x' 99) "))
+		div.appendChild(document.createComment("= def 'parent.x' 99"))
 		app.def('x', 420)
 		child.render(div)
 		assert.equal(app.view('x'), 99)
@@ -275,17 +275,17 @@ describe('data binding/updating', function() {
 	it('updates an interpolation when data is changed', function() {
 		var div = document.createElement("div"), div2 = document.createElement("div")
 		div.appendChild(div2)
-		div2.appendChild(document.createComment(" (x) "))
-		app.def('x', 1)
+		div2.appendChild(document.createComment("= put xx"))
+		app.def('xx', 1)
 		app.render(div)
 		assert.equal(div.textContent, '1')
-		app.def('x', 2)
+		app.def('xx', 2)
 		assert.equal(div.textContent, '2')
 	})
 
 	it('updates the interpolation of a function return val when data in the function params was changed', function() {
 		var div = document.createElement("div")
-		div.appendChild(document.createComment(" (add (add (add x x) 1) 1)"))
+		div.appendChild(document.createComment("= put add (add (add x x) 1) 1"))
 		app.def('x', 1)
 		app.render(div)
 		assert.equal(div.textContent, '4')
@@ -297,14 +297,14 @@ describe('data binding/updating', function() {
 describe('repeat', function() {
 
 	it('repeats an array of vals', function() {
-		var el = domify("<div><div><!-- (repeat xs) --><!-- (each) --></div></div>")
+		var el = domify("<div><div><!--= repeat xs --><!--= put each --></div></div>")
 		app.def('xs', [1,2,3])
 		app.render(el)
 		assert.equal(el.textContent, '123')
 	})
 
 	it('repeats an evaluated array', function() {
-		var el = domify("<div><div><!-- (repeat (tail xs))) --><!-- (each) --></div></div>")
+		var el = domify("<div><div><!--= repeat tail xs --><!--= put each --></div></div>")
 		app.def('xs', [1,2,3]).render(el)
 		assert.equal(el.textContent, '23')
 	})
@@ -313,8 +313,8 @@ describe('repeat', function() {
 		app._bindings = {}
 		var el = domify(
 "<div id='parent'>\
-<div id='xs'><!-- (repeat xs) --><!-- (each) --></div>\
-<div id='ys'><!-- (repeat ys) --><!-- (each) --></div>\
+<div id='xs'><!--= repeat xs --><!--= put each --></div>\
+<div id='ys'><!--= repeat ys --><!--= put each --></div>\
 </div>")
 
 		app.def('xs', [1,2,3])
@@ -330,7 +330,7 @@ describe('repeat', function() {
 	})
 
 	it('does not render into the template element', function() {
-		var el = domify("<div><div><!-- (repeat xs) --><!-- (each) --><!-- (wut) --></div></div>")
+		var el = domify("<div><div><!--= repeat xs --><!--= put each --><!--= put wut --></div></div>")
 		app.render(el)
 		app.def('xs', [1,2,3])
 		app.def('wut', 'dont show this')

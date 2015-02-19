@@ -5,7 +5,6 @@ var each_node = require('./lib/each_node'),
 	flatten_keys = require('./lib/flatten_keys'),
 	unflatten_keys = require('./lib/unflatten_keys'),
 	evaluate = require('./lib/evaluate'),
-	is_expr = require('./lib/is_expr'),
 	get_keys = require('./lib/get_keys'),
 	prev_open_tag = require('./lib/prev_open_tag')
 
@@ -36,14 +35,14 @@ app.def = function() {
 
 	iter.each(flatten_keys(obj), function(key) {
 		if(self._bindings[key])
-			iter.each(self._bindings[key], function(n) { self.eval_comment(n) })
+			iter.each(self._bindings[key], function(n) {
+				self.eval_comment(n)
+			})
 	})
 	return self
 }
 
-app.def('set', function(key, val) {
-	this.def(key, val)
-})
+app.def('set', function(key, val) { this.def(key, val) })
 
 app.def('set_at', function(arr_key, index, val) {
 	var arr = this.view(arr_key)
@@ -57,8 +56,8 @@ app.render = function(node) {
 	var self = this
 	each_node(node, function(n) {
 		var cont = true
-		if(n.nodeType === 8 && is_expr(n.textContent)) { // nodeType 8 == comment
-			var keys = get_keys(n.textContent)
+		if(n.nodeType === 8 && n.textContent[0] === '=') { // nodeType 8 == comment
+			var keys = get_keys(n.textContent.slice(1))
 			iter.each(keys, function(k) {
 				self._bindings[k] = self._bindings[k] || []
 				if(self._bindings[k].indexOf(n) === -1) self._bindings[k].push(n)
@@ -74,20 +73,10 @@ app.render = function(node) {
 app.clear_bindings = function() {this._bindings = {}; return this}
 
 app.eval_comment = function(comment) {
-	var self = this, prev_node = self.node
-	self.node = prev_open_tag(comment)
-	self.comment = comment
-	var result = evaluate(comment.textContent, self)
-	if(result === [] || result === undefined || result === null || result === NaN || result == self || !self.node || !comment.parentNode || result.skip)
-		return result
-	var interp = comment.nextSibling
-	if(!interp || interp.className !== 'deja-put') {
-		interp = document.createElement('span')
-		interp.className = 'deja-put'
-		comment.parentNode.insertBefore(interp, comment.nextSibling)
-	}
-	interp.innerHTML = String(result)
-	return result
+	var prev_node = this.node
+	this.node = prev_open_tag(comment)
+	this.comment = comment
+	return evaluate(comment.textContent.slice(1), this)
 }
 
 // Inherit a view & namespace the parent! TODO
@@ -102,6 +91,18 @@ app.child = function() {
 
 app.def('no_op', function() {})
 app.def('id', function(x) {return x})
+
+app.def("put", function(x) {
+	if(x === undefined || x === null || x === NaN) return
+	var interp = this.comment.nextSibling
+	if(!interp || interp.className !== 'deja-put') {
+		interp = document.createElement('span')
+		interp.className = 'deja-put'
+		this.comment.parentNode.insertBefore(interp, this.comment.nextSibling)
+	}
+	interp.innerHTML = String(x)
+	return x
+})
 
 // Array funcs
 
@@ -149,7 +150,7 @@ app.def('repeat', function(arr) {
 	iter.each(arr, function(x, i) {
 		var cloned = self.node.cloneNode(true)
 		cloned.style.display = ''
-		var child = self.child().clear_bindings().def('i', i).def('each', x).def(x).def(x).render(cloned)
+		var child = self.child().clear_bindings().def('i', i).def('each', x).def(x).render(cloned)
 		wrapper.appendChild(cloned)
 	})
 
@@ -160,7 +161,7 @@ app.def('repeat', function(arr) {
 app.def('add', function() { return sum(arguments) })
 app.def('sub', function() { return diff(arguments) })
 app.def('mul', function() { return prod(arguments) })
-app.def('div', function(x,y) { return x/y })
+app.def('divide', function(x,y) { return x/y })
 
 app.def('incr', function(key) {
 	var val = Number(this.view(key))

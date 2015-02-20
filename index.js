@@ -11,8 +11,10 @@ var each_node = require('./lib/each_node'),
 var app = module.exports = { _bindings: {}}
 
 app.view = function(x) {
-	if(arguments.length === 0) return this
-	if(typeof x === 'string') return evaluate(x, this)
+	var self = this
+	if(arguments.length === 0) return self
+	if(arguments.length > 1) return iter.map(arguments, function(expr) { return evaluate(expr, self) })
+	else return evaluate(x, self)
 	return x
 }
 
@@ -281,8 +283,6 @@ function compare(fn, args) {
 		last = args[i]
 	} return true
 }
-
-window.compare = compare
 
 var delay = (function() {
 	var timer = 0

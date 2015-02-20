@@ -8,7 +8,7 @@ var app = window.app = require('../'),
 describe('parse', function() {
 
 	it('denests parens', function() {
-		assert.deepEqual(parse('(1)'), '1')
+		assert.deepEqual(parse('((1))'), [{val: 1}])
 	})
 
 	it('turns a num into a demarcated number', function() {
@@ -33,14 +33,54 @@ describe('parse', function() {
 
 	it('turns an expression into an array of atoms and sub-expressions', function() {
 		var sexpr = 'a (b (c z)) (d "hello!") 433.43 "sup brah"',
-			parsed = ['a', 'b (c z)', 'd "hello!"', '433.43', "\"sup brah\""]
+			parsed = [{key: 'a'}, 'b (c z)', 'd "hello!"', {val: '433.43'}, {val: "sup brah"}]
 		assert.deepEqual(parse(sexpr), parsed)
 	})
 
 	it('correctly parses two strings in a row', function() {
 		var sexpr = "'hey' 'there'",
-			parsed = ["'hey'", "'there'"]
+			parsed = [{val: "hey"}, {val: "there"}]
 		assert.deepEqual(parse(sexpr), parsed)
+	})
+})
+
+describe('lib/evaluate', function() {
+
+	it('returns a val', function() {
+		assert.equal(evaluate('1', {}), 1)
+		assert.equal(evaluate('"hi friends"', {}), "hi friends")
+	})
+
+	it('evals a 0-ary func', function() {
+		assert.equal(evaluate("say_hi", {say_hi: function(){return 'hiii'}}), 'hiii')
+	})
+
+	it('evals an n-ary func', function() {
+		assert.equal(evaluate("add 1 2", {add: function(x,y){return x+y}}), 3)
+	})
+
+	it('evals func chaining thing', function() {
+		assert.equal(evaluate("add add 2 3 add 1 1", {add: function(x,y){return x+y}}), 7)
+	})
+
+	it('evals partial func chaining thing', function() {
+		assert.equal(evaluate("add 1 add 2 add 1 1", {add: function(x,y){return x+y}}), 5)
+	})
+
+	it('evals nested scoped funcs', function() {
+		assert.equal(evaluate("mul (add 1 2) 3", {add: function(x,y){return x+y}, mul: function(x,y) {return x*y}}), 9)
+	})
+
+	it('evals lazy funcs', function() {
+		assert.equal(evaluate("fn", {fn: {_lazy: function(){return 'hiii'},}}), 'hiii')
+	})
+
+	it('evals a lazy n-ary func', function() {
+		assert.equal(evaluate("add 1 2", {add: {_lazy: function(x,y){return x.val+y.val}}}), 3)
+	})
+
+	it('does not execute a nested func when the first func is undefined', function() {
+		assert.equal(evaluate("add 1 dont 3 2", {dont: {_lazy: function() {return 'nope'}}}), undefined)
 	})
 })
 
@@ -48,10 +88,10 @@ describe('.def_lazy', function() {
 
 	it('does stuff', function() {
 		app.def_lazy('immediate', function(x) { this.view(x) })
-		app.def_lazy('noop', function(x) {x})
+		app.def_lazy('noop', function(x) {})
 		var div = document.createElement("div")
-		div.appendChild(document.createComment("= immediate (set 'hey' 'heeey')"))
-		div.appendChild(document.createComment("= noop (set 'hey' 'wuwhut')"))
+		div.appendChild(document.createComment("= def 'hey' 'heeey'"))
+		div.appendChild(document.createComment("= noop (def 'hey' 'wuwhut')"))
 		app.render(div)
 		assert.equal(app.hey, 'heeey')
 	})
@@ -89,7 +129,7 @@ describe('.def', function() {
 
 	it('can use the result of a 0-ary function in the args of another fn', function() {
 		app.def('hi', function(){return 'hi'})
-		app.view("set 'x' hi")
+		app.view("def 'x' hi")
 		assert.equal(app.x, 'hi')
 	})
 })
@@ -109,7 +149,7 @@ describe('.view', function() {
 		assert.equal(app.view('("hey there!")'), "hey there!")
 	})
 
-	it('returns the value for a single key set into the view data', function() {
+	it('returns the value for a single key def into the view data', function() {
 		app.def('x', 420)
 		assert.equal(app.view('x'), 420)
 	})
@@ -221,7 +261,7 @@ describe('.render', function() {
 })
 
 describe('.child', function() {
-	
+
 	it('has access to the parents data', function() {
 		var child = app.child()
 		app.def('x', 420)
@@ -259,7 +299,7 @@ describe('.child', function() {
 		assert.equal(app.view('x'), 101)
 	})
 
-	it('child view can set data from the dom for the parent view', function() {
+	it('child view can define data from the dom for the parent view', function() {
 		var div = document.createElement('div'),
 			child = app.child()
 		div.appendChild(document.createComment("= def 'parent.x' 99"))

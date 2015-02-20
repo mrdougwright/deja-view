@@ -183,7 +183,7 @@ app.def('add_class', function(class_name) { add_class(this.node, class_name) })
 app.def('remove_class', function(class_name) { remove_class(this.node, class_name) })
 
 app.def('toggle_class', function(class_name) {
-	if(this.node.className.indexOf(class_name)) remove_class(this.node, class_name)
+	if(this.node.className.indexOf(class_name) !== -1) remove_class(this.node, class_name)
 	else add_class(this.node, class_name)
 })
 

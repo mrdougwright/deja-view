@@ -162,8 +162,10 @@ app.def('if', function(predicate, then_expr, else_expr) {
 
 ### functions that modify the node
 
-| repeat | Array | repeat the parent node for each element in the array. | `(repeat user_listing)` |
-| show_if | Value(predicate to test) | test a Value; if true, set display to ''; if false, set display to 'none' | `(show_if public_profile)` |
+| name | type | action | example |
+|:---- |:---- |:------ |:----- |
+| repeat  | Array | repeat the parent node for each element in the array | `(repeat user_listing)` |
+| show_if | Value (predicate to test) | test a Value; if true, set display to ''; if false, set display to 'none' | `(show_if public_profile)` |
 | hide_if | Value(predicate to test) | test a Value; if false, set display to 'none'; if true set display to '' | `(hide_if anonymous_profile)` |
 | attr | name val | set an attribute to a value on the parent node | `(attr 'href' profile_link)` |
 | remove_attr | name | remove the attribute from the parent node | `(remove_attr 'href')` |
@@ -174,11 +176,15 @@ app.def('if', function(predicate, then_expr, else_expr) {
 
 ### conditionals
 
-| if | Value Expr Expr | if the predicate is true, evaluate the first expression, else evaluate the second expression (optional).  | `(if active_account (class 'active') (class 'inactive'))`
-| unless | Value Expr Expr | the inverse of `if` | `(unless confirmed_account (class 'confirmed'))`
+| name | type | action | example |
+|:---- |:---- |:------ |:----- |
+| if | Value Expr Expr | if the predicate is true, evaluate the first expression, else evaluate the second expression (optional)  | `(if active_account (class 'active') (class 'inactive'))` |
+| unless | Value Expr Expr | the inverse of `if` | `(unless confirmed_account (class 'confirmed'))` |
 
 ### data manipulation
 
+| name | type | action | example |
+|:---- |:---- |:------ |:----- |
 | set | String Value | set the key to the given value in the view's data | `(set 'x' 1)` |
 | push | Value String | push a value into an array in the view, given by the array's key name | `(push 1 'numbers')` |
 | pop | String | push a value into an array in the view, given by the array's name | `(pop 'user_list')` |
